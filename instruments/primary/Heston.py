@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from BasePrimary import BasePrimary
+from .BasePrimary import BasePrimary
 
 import torch
 
