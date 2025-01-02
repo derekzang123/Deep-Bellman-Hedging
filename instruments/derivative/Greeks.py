@@ -5,63 +5,114 @@ from torch import Tensor
 from ..derivative.BaseOption import BaseOption
 
 class Greeks:
-    delta: float
-    gamma: float
-    vega: float
-    theta: float
-    rho: float
+    @staticmethod
+    def get_delta(derivative: BaseOption, params: dict) -> Tensor:
+        """
+        Computes the delta of the option.
 
-    def __init__(self, option: BaseOption):
-        self.option = option
+        Args:
+            derivative (BaseOption): The option derivative.
+            params (dict): A dictionary containing 'spot_price'
 
-    def get_delta(self) -> Tensor: # dependent variable - option price, independent - value of underlying asset
-        spot = self.option._underlier.spot.detach().clone()
-        spot.requires_grad_()
+        Returns:
+            Tensor: The delta of the option.
+        """
+        spot = params["spot_price"]
+        spot_tensor = spot.detach().clone()
+        spot_tensor.requires_grad_()
 
-        self.option._underlier.spot = spot
-        price = self.option.payoff().mean()
+        derivative._underlier.spot = spot
+        price = derivative.payoff().mean()
 
-        delta = torch.autograd.grad(price, spot, create_graph=True)
-        return delta.item()
+        delta, = torch.autograd.grad(price, spot_tensor, create_graph=True)
+        return delta
 
-    def get_gamma(self) -> Tensor: # dependent - delta, indep = value of underlying asset
-        spot = self.option._underlier.spot.detach().clone()
-        spot.requires_grad_()
+    @staticmethod
+    def get_gamma(derivative: BaseOption, params: dict) -> Tensor:
+        """
+            Computes the gamma of the option.
 
-        self.option._underlier.spot = spot
-        price = self.option.payoff().mean()
+            Args:
+                derivative (BaseOption): The option derivative.
+                params (dict): A dictionary containing 'spot_price'
 
-        delta, = torch.autograd.grad(price, spot, create_graph=True)
-        gamma, = torch.autograd.grad(delta, spot)
+            Returns:
+                Tensor: The gamma of the option.
+        """
+        spot = params["spot_price"]
+        spot_tensor = spot.detach().clone()
+        spot_tensor.requires_grad_()
 
-        return gamma.item()
+        derivative._underlier.spot = spot
+        price = derivative.payoff().mean()
 
-    def get_vega(self) -> Tensor: # dependent - option price, independent, volatility
-        price = self.option.payoff().mean()
+        delta, = torch.autograd.grad(price, spot_tensor, create_graph=True)
+        gamma, = torch.autograd.grad(delta, spot_tensor)
 
-        volatility = None
+        return gamma
+
+    @staticmethod
+    def get_vega(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, independent, volatility
+        """
+            Computes the vega of the option.
+
+            Args:
+                derivative (BaseOption): The option derivative.
+                params (dict): A dictionary containing 'volatility'
+
+            Returns:
+                Tensor: The vega of the option.
+        """
+        volatility = params["volatility"]
+
+        derivative._underlier.volatility = volatility
+        price = derivative.payoff().mean()
 
         vega, = torch.autograd.grad(price, volatility)
 
-        return vega.item()
+        return vega
+    @staticmethod
+    def get_theta(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, indep - ttm
+        """
+            Computes the theta of the option.
 
-    def get_theta(self) -> Tensor: # dependent - option price, indep - ttm
-        time_to_maturity = self.option.ttm.detach().clone()
-        time_to_maturity.requires_grad_()
+            Args:
+                derivative (BaseOption): The option derivative.
+                params (dict): A dictionary containing 'time_to_maturity'.
 
-        price = self.option.payoff().mean()
+            Returns:
+                Tensor: The theta of the option.
+        """
+        time_to_maturity = params["time_to_maturity"]
+        time_to_maturity_tensor = time_to_maturity.detach().clone()
+        time_to_maturity_tensor.requires_grad_()
 
-        theta, = torch.autograd.grad(price, time_to_maturity)
+        derivative._underlier.time_to_maturity = time_to_maturity_tensor
+        price = derivative.payoff().mean()
 
-        return theta.item()
-    def get_rho(self) -> Tensor: # dependent - option price, indep, interest rate
-        price = self.option.payoff().mean()
+        theta, = torch.autograd.grad(price, time_to_maturity_tensor)
 
-        interest_rate = None
+        return theta
+    @staticmethod
+    def get_rho(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, indep, interest rate
+        """
+            Computes the rho of the option.
 
-        vega, = torch.autograd.grad(price, interest_rate)
+            Args:
+                derivative (BaseOption): The option derivative.
+                params (dict): A dictionary containing 'interest_rate'.
 
-        return vega.item()
+            Returns:
+                Tensor: The rho of the option.
+        """
+        interest_rate = params["interest_rate"]
+
+        derivative._underlier.interest_rate = interest_rate
+        price = derivative.payoff().mean()
+
+        rho, = torch.autograd.grad(price, interest_rate)
+
+        return rho
 
 
 
