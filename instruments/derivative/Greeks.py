@@ -1,6 +1,8 @@
 import torch
 
-from ..derivative.BaseDerivative import BaseDerivative
+from torch import Tensor
+
+from ..derivative.BaseOption import BaseOption
 class Greeks:
     delta: float
     gamma: float
@@ -8,23 +10,29 @@ class Greeks:
     theta: float
     rho: float
 
-    def __init__(self, derivative: BaseDerivative):
-        self.derivative = derivative
+    def __init__(self, option: BaseOption):
+        self.option = option
 
-    # only works for European options which only exercise at expiry... must add functionality to support early exercise afforded by American options
-    def delta(self, epsilon: float = 1e-5) -> float: #  how much an option's price can be expected to move for every $1 change in the price of the underlying security or index
-        spot_price = self.derivative.spot
+    def get_delta(self) -> Tensor:
+        spot = self.option._underlier.spot.detach().clone()
+        spot.requires_grad_()
 
-        up_price = spot_price + 1
-        down_price = spot_price - 1
+        self.option._underlier.spot = spot
+        price = self.option.payoff().mean()
 
-        self.derivative.simulate(n_paths=10000)
-        self.derivative.spot = up_price
-        price_up = self.derivative.payoff()
+        delta = torch.autograd.grad(price, spot, create_graph=True)
+        return delta
 
-        self.derivative.simulate(n_paths = 10000)
-        self.derivative.spot = down_price
-        price_down = self.derivative.payoff()
+    def gamma(self) -> Tensor:
+        spot = self.option._underlier.spot.detach().clone()
+        spot.requires_grad_()
 
-        delta = (price_up - price_down) / 2
-        return delta.mean().item()
+        self.option._underlier.spot = spot
+        price = self.option.payoff().mean()
+
+        delta, = torch.autograd.grad(price, spot, create_graph=True)
+        gamma, = torch.autograd.grad(delta, spot)
+
+
+
+
