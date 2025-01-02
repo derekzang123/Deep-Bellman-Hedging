@@ -2,12 +2,14 @@ from abc import ABC
 from abc import abstractmethod
 
 from typing import Optional
+from typing import TypeVar
 
 import torch
 from torch import Tensor
 
 from ..BaseInstrument import BaseInstrument
 
+T = TypeVar("T", bound="BaseOption")
 
 class BaseOption(ABC):
     """
