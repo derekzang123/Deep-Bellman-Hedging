@@ -140,6 +140,6 @@ class BaseOption(ABC):
         if name == "_underlier":
             if not isinstance(instrument, BaseInstrument):
                 raise TypeError(
-                    f"The underlier must be an instance of BaseInstrument, not {type(value).__name__}."
+                    f"The underlier must be an instance of BaseInstrument, not {type(instrument).__name__}."
                 )
-        super().__setattr__(name, value)
+        super().__setattr__(name, instrument)
