@@ -1,14 +1,8 @@
-# This class is adapted from Masanori HIRANO's implementation in "pfhedge"
-# Source: https://github.com/pfnet-research/pfhedge/tree/main
-# License: MIT
-
-
 from abc import ABC
-from abs import abstractmethod
+from abc import abstractmethod
 
 from typing import Any
 from typing import List
-from typing import Optional
 from typing import TypeVar
 
 import torch
@@ -37,8 +31,29 @@ class BaseInstrument(ABC):
         """
         Abstract property to retrieve the spot price of the instrument.
 
+        Shape:
+            - Output: :math:`(N) x :math:`M where
+              :math:`N` stands for the number of simulated paths, and :math:`M` 
+              stands for the number of time steps simulated for each path.
+
         Returns:
             torch.Tensor: The spot price of the instrument.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def var(self: T) -> Tensor:
+        """
+        Abstract property to retrieve the variance of the instrument. 
+
+        Shape:
+            - Output: :math:`(N) x :math:`M where
+              :math:`N` stands for the number of simulated paths, and :math:`M` 
+              stands for the number of time steps simulated for each path.
+
+        Returns:
+            torch.Tensor: The variance of the instrument. 
         """
         pass
 
@@ -122,7 +137,7 @@ class BaseInstrument(ABC):
             raise ValueError(
                 f"Unsupported dtype: {_dtype_}. Supported floating-point dtypes are: {list(dtypes_map.keys())}."
             )
-        return self.to(dtype=floating_point_dtypes[_dtype_])
+        return self.to(dtype=dtypes_map[_dtype_])
 
     def _dinfo(self: T) -> List[str]:
         """

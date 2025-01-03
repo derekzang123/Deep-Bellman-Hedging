@@ -1,4 +1,3 @@
-from abc import ABC
 from abc import abstractmethod
 
 from typing import Optional
@@ -8,11 +7,12 @@ import torch
 from torch import Tensor
 
 from ..BaseInstrument import BaseInstrument
+from .BaseDerivative import BaseDerivative
 
 T = TypeVar("T", bound="BaseOption")
 
 
-class BaseOption(ABC):
+class BaseOption(BaseDerivative):
     """
     A mixin class for general, financial instruments providing methods to compute moneyness and time to maturity (TTM).
 
