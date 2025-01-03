@@ -1,7 +1,3 @@
-# This class is adapted from Masanori HIRANO's implementation in "pfhedge"
-# Source: https://github.com/pfnet-research/pfhedge/tree/main
-# License: MIT
-
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import Any
@@ -52,6 +48,11 @@ class BasePrimary(BaseInstrument):
     def simulate(self, n_paths: int, duration: float) -> None:
         """
         Abstract method to simulate time-series data for the instrument.
+
+        SShape:
+            - Output: :math:`(N) x :math:`M where
+              :math:`N` stands for the number of simulated paths, and :math:`M` 
+              stands for the number of time steps simulated for each path.
 
         Args:
             n_paths (int): The number of simulation paths.
@@ -141,7 +142,27 @@ class BasePrimary(BaseInstrument):
         raise AttributeError(
             f"'{self._get_name()}' object has no attribute '{name}'. "
             "Asset may not be simulated.")
+    
+    @property 
+    def var(self) -> Tensor:
+        """
+        Returns the volatility buffer of an instrument
 
+        Returns:
+            torch.Tensor: The asset volatility tensor
+
+        Raises: 
+            AttributeError: If the volatility is not defined
+        """
+        name = "var"
+        if "buffers" in self.__dict__:
+            buffers = self.__dict__["buffers"]
+            if name in buffers:
+                return buffers[name]
+        raise AttributeError(
+            f"'{self._get_name()}' object has no attribute '{name}'. "
+            "Asset may not be simulated.")
+    
     def to(self: T, *args: Any, **kwargs: Any) -> T:
         """
         Moves or casts all buffers of the instrument to a specified device and/or dtype.

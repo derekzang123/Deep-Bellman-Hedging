@@ -22,7 +22,7 @@ class BaseDerivative(BaseInstrument):
     """
     Abstract base class for derivatives, encapsulating properties such as cost, maturity,
     underliers, and clauses. A derivative is a financial instrument whose payoff is contingent on
-    a primary instrument (or a set of primary instruments). A derivative is not traded OTC, so price is not directly accessible. 
+    a primary instrument (or a set of primary instruments). A derivative is not traded OTC, so price is not directly accessible.
 
     Attributes:
         underlier (BasePrimary): The base class for primary instruments.
@@ -81,7 +81,8 @@ class BaseDerivative(BaseInstrument):
             )
 
     def simulate(self, n_paths: int) -> None:
-        """Simulate time series associated with the underlier.
+        """
+        Simulate time series associated with the underlier.
 
         Args:
             n_paths (int): The number of paths to simulate.
@@ -283,3 +284,28 @@ class BaseDerivative(BaseInstrument):
         if self.pricer is None:
             raise ValueError("self is not listed.")
         return self.pricer(self)
+
+    @property
+    def var(self) -> Tensor:
+        """
+        Computes the derivative's basket variance tensor for a series of underliers
+        according to the equation bvar = Σ_i w_i^2 * Var_i + Σ_i Σ_j w_i * w_j * Cov(i, j)
+
+        Returns:
+            torch.Tensor: Covariance tensor of _underliers
+        """
+        spots, vars = zip(
+            *(
+                (underlier.spot, underlier.var)
+                for _, underlier in self._underliers.items()
+            )
+        )
+        spots = torch.stack(spots)
+        vars = torch.stack(vars)
+
+        ssum = torch.sum(spots)
+        weights = spots / ssum
+        bvar = torch.sum(weights**2 * vars, dim=0) + torch.einsum(
+            "ikl,jkl->kl", weights, weights * vars
+        )
+        return bvar
