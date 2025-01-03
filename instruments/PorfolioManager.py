@@ -12,6 +12,7 @@ class PortfolioManager:
         return self.portfolio.aggregate_cashflows(t)
 
     def update_portfolio_features(self, t):
+        pass
 
 
 
