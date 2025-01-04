@@ -1,118 +1,58 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+from ..primary import BasePrimary
+
 import torch
 
-from torch import Tensor
+class Heston(BasePrimary):
+    def __init__(self, S0: float, v0: float, rho: float, kappa: float, theta: float, xi: float, mu: float, n_steps: int, T:float, dtype=torch.float32, device=torch.device('cpu')) -> None:
+        super().__init__()
+        self.S0 = S0
+        self.v0 = v0
+        self.rho = rho
+        self.kappa = kappa
+        self.theta = theta
+        self.xi = xi
+        self.mu = mu
+        self.T = T
+        self.n_steps = n_steps
+        self.dt = T / n_steps
+        self.dtype = dtype
+        self.device = device
 
-from ..derivative.BaseOption import BaseOption
+    def simulate(self, n_paths: int, duration: float) -> None:
+        n_steps = int(duration / self.dt)
 
-class Greeks:
-    @staticmethod
-    def get_delta(derivative: BaseOption, params: dict) -> Tensor:
+        S = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
+        v = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
+
+        S[:, 0] = self.S0
+
+        for t in range(1, n_steps + 1):
+            Z1 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
+                              std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
+            Z2 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
+                              std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
+            W1 = Z1
+            W2 = self.rho * Z1 + torch.sqrt(torch.tensor(1.0 - self.rho ** 2, dtype=self.dtype, device=self.device)) * Z2
+
+            # Variance process (CIR model)
+            v[:, t] = torch.abs(v[:, t - 1] + self.kappa * (self.theta - v[:, t - 1]) * self.dt + self.xi * torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W2)
+
+            # Stock price process
+            S[:, t] = S[:, t - 1] * torch.exp((self.mu - 0.5 * v[:, t - 1]) * self.dt + torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W1)
+
+        self.add_buffer("stock_prices", S)
+        self.add_buffer("variances", v)
+        self.add_buffer("spot", S[:, -1])
+
+    @property
+    def spot(self) -> torch.Tensor:
         """
-        Computes the delta of the option.
-
-        Args:
-            derivative (BaseOption): The option derivative.
-            params (dict): A dictionary containing 'spot_price'
+        Returns the spot price (stock prices) buffer of the instrument.
 
         Returns:
-            Tensor: The delta of the option.
+            torch.Tensor: The stock price tensor.
         """
-        spot = params["spot_price"]
-        spot_tensor = spot.detach().clone()
-        spot_tensor.requires_grad_()
-
-        derivative._underlier.spot = spot
-        price = derivative.payoff().mean()
-
-        delta, = torch.autograd.grad(price, spot_tensor, create_graph=True)
-        return delta
-
-    @staticmethod
-    def get_gamma(derivative: BaseOption, params: dict) -> Tensor:
-        """
-            Computes the gamma of the option.
-
-            Args:
-                derivative (BaseOption): The option derivative.
-                params (dict): A dictionary containing 'spot_price'
-
-            Returns:
-                Tensor: The gamma of the option.
-        """
-        spot = params["spot_price"]
-        spot_tensor = spot.detach().clone()
-        spot_tensor.requires_grad_()
-
-        derivative._underlier.spot = spot
-        price = derivative.payoff().mean()
-
-        delta, = torch.autograd.grad(price, spot_tensor, create_graph=True)
-        gamma, = torch.autograd.grad(delta, spot_tensor)
-
-        return gamma
-
-    @staticmethod
-    def get_vega(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, independent, volatility
-        """
-            Computes the vega of the option.
-
-            Args:
-                derivative (BaseOption): The option derivative.
-                params (dict): A dictionary containing 'volatility'
-
-            Returns:
-                Tensor: The vega of the option.
-        """
-        volatility = params["volatility"]
-
-        derivative._underlier.volatility = volatility
-        price = derivative.payoff().mean()
-
-        vega, = torch.autograd.grad(price, volatility)
-
-        return vega
-    @staticmethod
-    def get_theta(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, indep - ttm
-        """
-            Computes the theta of the option.
-
-            Args:
-                derivative (BaseOption): The option derivative.
-                params (dict): A dictionary containing 'time_to_maturity'.
-
-            Returns:
-                Tensor: The theta of the option.
-        """
-        time_to_maturity = params["time_to_maturity"]
-        time_to_maturity_tensor = time_to_maturity.detach().clone()
-        time_to_maturity_tensor.requires_grad_()
-
-        derivative._underlier.time_to_maturity = time_to_maturity_tensor
-        price = derivative.payoff().mean()
-
-        theta, = torch.autograd.grad(price, time_to_maturity_tensor)
-
-        return theta
-    @staticmethod
-    def get_rho(derivative: BaseOption, params: dict) -> Tensor: # dependent - option price, indep, interest rate
-        """
-            Computes the rho of the option.
-
-            Args:
-                derivative (BaseOption): The option derivative.
-                params (dict): A dictionary containing 'interest_rate'.
-
-            Returns:
-                Tensor: The rho of the option.
-        """
-        interest_rate = params["interest_rate"]
-
-        derivative._underlier.interest_rate = interest_rate
-        price = derivative.payoff().mean()
-
-        rho, = torch.autograd.grad(price, interest_rate)
-
-        return rho
-
-
-
+        return self.get_buffer("spot")
