@@ -1,58 +1,155 @@
-import numpy as np
-import matplotlib.pyplot as plt
+# TODO: WE NEED A MONTE CARLO PRICING SCHEME THAT COMPUTES THE PRICE OF AN OPTION WRT ANY NUMBER OF STOCHASTIC VARIABLES
+# AS SUCH, WE NEED A FLEXIBLE PRICER DEFINITION https://en.wikipedia.org/wiki/Monte_Carlo_methods_for_option_pricing
 
-from ..primary import BasePrimary
+from typing import Callable
+from typing import Any
 
 import torch
+from torch import Tensor
 
-class Heston(BasePrimary):
-    def __init__(self, S0: float, v0: float, rho: float, kappa: float, theta: float, xi: float, mu: float, n_steps: int, T:float, dtype=torch.float32, device=torch.device('cpu')) -> None:
-        super().__init__()
-        self.S0 = S0
-        self.v0 = v0
-        self.rho = rho
-        self.kappa = kappa
-        self.theta = theta
-        self.xi = xi
-        self.mu = mu
-        self.T = T
-        self.n_steps = n_steps
-        self.dt = T / n_steps
-        self.dtype = dtype
-        self.device = device
 
-    def simulate(self, n_paths: int, duration: float) -> None:
-        n_steps = int(duration / self.dt)
+def set_grad(tensor: Tensor, key: str, **kwargs: Any) -> None:
+    """
+    Sets the requires_grad attribute of a tensor and updates the kwargs dictionary.
 
-        S = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
-        v = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
+    Args:
+        tensor (Tensor): The tensor to be modified.
+        key (str): The key in kwargs to associate with the tensor.
+        kwargs (Any): The dictionary containing additional arguments.
+    """
+    tensor = tensor.detach().clone()
+    tensor.requires_grad_()
+    kwargs[key] = tensor
 
-        S[:, 0] = self.S0
 
-        for t in range(1, n_steps + 1):
-            Z1 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
-                              std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
-            Z2 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
-                              std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
-            W1 = Z1
-            W2 = self.rho * Z1 + torch.sqrt(torch.tensor(1.0 - self.rho ** 2, dtype=self.dtype, device=self.device)) * Z2
+def delta(
+    pricer: Callable[..., Tensor], create_graph: bool = False, **kwargs: Any
+) -> Tensor:
+    """
+    Computes the delta of the option.
 
-            # Variance process (CIR model)
-            v[:, t] = torch.abs(v[:, t - 1] + self.kappa * (self.theta - v[:, t - 1]) * self.dt + self.xi * torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W2)
+    Args:
+        pricer (Callable): A pricer function that takes the required arguments and returns the option price.
+        create_graph (bool): Whether to create the computational graph for higher-order derivatives.
+        kwargs (Any): Additional arguments to pass to the pricer function. Must include 'spot'.
 
-            # Stock price process
-            S[:, t] = S[:, t - 1] * torch.exp((self.mu - 0.5 * v[:, t - 1]) * self.dt + torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W1)
+    Returns:
+        Tensor: The delta of the option.
+    """
+    if "spot" not in kwargs:
+        raise ValueError(
+            "The 'spot' parameter must be provided in kwargs to compute delta."
+        )
 
-        self.add_buffer("stock_prices", S)
-        self.add_buffer("variances", v)
-        self.add_buffer("spot", S[:, -1])
+    set_grad(kwargs["spot"], "spot", kwargs)
+    price = pricer(**kwargs)
+    (delta,) = torch.autograd.grad(price, kwargs["spot"], create_graph=create_graph)
+    return delta
 
-    @property
-    def spot(self) -> torch.Tensor:
-        """
-        Returns the spot price (stock prices) buffer of the instrument.
 
-        Returns:
-            torch.Tensor: The stock price tensor.
-        """
-        return self.get_buffer("spot")
+def gamma(
+    pricer: Callable[..., Tensor], create_graph: bool = False, **kwargs: Any
+) -> Tensor:
+    """
+    Computes the delta of the option.
+
+    Args:
+        pricer (Callable): A pricer function that takes the required arguments and returns the option price.
+        create_graph (bool): Whether to create the computational graph for higher-order derivatives.
+        kwargs (Any): Additional arguments to pass to the pricer function. Must include 'spot'.
+
+    Returns:
+        Tensor: The delta of the option.
+    """
+    if "spot" not in kwargs:
+        raise ValueError(
+            "The 'spot' parameter must be provided in kwargs to compute delta."
+        )
+
+    set_grad(kwargs["spot"], "spot", kwargs)
+    hessian = torch.autograd.functional.hessian(
+        lambda spot_param: pricer(spot=spot_param, **kwargs),
+        kwargs["spot"],
+        create_graph=create_graph,
+    )
+    gamma = hessian.item() if hessian.numel() == 1 else hessian
+    return gamma
+
+
+def vega(
+    pricer: Callable[..., Tensor], create_graph: bool = False, **kwargs: Any
+) -> Tensor:
+    """
+    Computes the delta of the option.
+
+    Args:
+        pricer (Callable): A pricer function that takes the required arguments and returns the option price.
+        create_graph (bool): Whether to create the computational graph for higher-order derivatives.
+        kwargs (Any): Additional arguments to pass to the pricer function. Must include 'spot' and 'ttm'.
+
+    Returns:
+        Tensor: The delta of the option.
+    """
+    for key in ["spot", "var"]:
+        if key not in kwargs:
+            raise ValueError(
+                f"The '{key}' parameter must be provided in kwargs to compute vega."
+            )
+        set_grad(kwargs[key], kwargs, key)
+
+    price = pricer(**kwargs)
+    (vega,) = torch.autograd.grad(price, kwargs["var"], create_graph=create_graph)
+    return vega
+
+
+def theta(
+    pricer: Callable[..., Tensor], create_graph: bool = False, **kwargs: Any
+) -> Tensor:
+    """
+    Computes the delta of the option.
+
+    Args:
+        pricer (Callable): A pricer function that takes the required arguments and returns the option price.
+        create_graph (bool): Whether to create the computational graph for higher-order derivatives.
+        kwargs (Any): Additional arguments to pass to the pricer function. Must include 'spot' and 'ttm'.
+
+    Returns:
+        Tensor: The delta of the option.
+    """
+    for key in ["spot", "ttm"]:
+        if key not in kwargs:
+            raise ValueError(
+                f"The '{key}' parameter must be provided in kwargs to compute vega."
+            )
+        set_grad(kwargs[key], kwargs, key)
+
+    price = pricer(**kwargs)
+    (theta,) = torch.autograd.grad(price, kwargs["ttm"])
+    return theta
+
+
+# TODO: CHECK VASICEK
+def rho(
+    pricer: Callable[..., Tensor], create_graph: bool = False, **kwargs: Any
+) -> Tensor:
+    """
+    Computes the delta of the option.
+
+    Args:
+        pricer (Callable): A pricer function that takes the required arguments and returns the option price.
+        create_graph (bool): Whether to create the computational graph for higher-order derivatives.
+        kwargs (Any): Additional arguments to pass to the pricer function. Must include 'spot' and 'interest'.
+
+    Returns:
+        Tensor: The delta of the option.
+    """
+    for key in ["spot", "interest"]:
+        if key not in kwargs:
+            raise ValueError(
+                f"The '{key}' parameter must be provided in kwargs to compute vega."
+            )
+        set_grad(kwargs[key], kwargs, key)
+
+    price = pricer(**kwargs)
+    (rho,) = torch.autograd.grad(price, kwargs["interest"])
+    return rho

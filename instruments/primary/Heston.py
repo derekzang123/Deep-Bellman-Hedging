@@ -85,6 +85,7 @@ class Heston(BasePrimary):
             option_type:
 
         Returns:
+            torch.Tensor: Price
 
         """
         if option_type == "call":
