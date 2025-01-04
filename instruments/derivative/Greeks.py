@@ -124,7 +124,7 @@ def theta(
         set_grad(kwargs[key], kwargs, key)
 
     price = pricer(**kwargs)
-    (theta,) = torch.autograd.grad(price, kwargs["ttm"])
+    (theta,) = torch.autograd.grad(price, kwargs["ttm"], create_graph=create_graph)
     return theta
 
 
@@ -151,5 +151,5 @@ def rho(
         set_grad(kwargs[key], kwargs, key)
 
     price = pricer(**kwargs)
-    (rho,) = torch.autograd.grad(price, kwargs["interest"])
+    (rho,) = torch.autograd.grad(price, kwargs["interest"], create_graph=create_graph)
     return rho

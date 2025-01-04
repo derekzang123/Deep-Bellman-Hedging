@@ -34,13 +34,7 @@ class BaseOption(BaseDerivative):
         This method must be implemented by subclasses and should define the specific
         payoff logic, including handling path-dependent scenarios where the payoff
         depends on the full price path or intermediate values of the _underlier(s).
-
-        For path-independent derivatives (e.g., European options), the payoff typically
-        depends only on the final step of the _underlier's spot price.
-        For path-dependent derivatives (e.g., Asian options, barrier options), this
-        method should process the entire path or relevant intermediate steps to compute
-        the payoff.
-
+        
         Returns:
             Tensor: A tensor of shape `(n_paths,)` representing the computed payoff
             for each simulated path.
