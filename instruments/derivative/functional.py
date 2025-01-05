@@ -22,7 +22,7 @@ def heston_call_price(heston: Heston, option: BaseOption, r: float):
    Calculate the price of a European call option using the Heston model.
 
    Args:
-      option (BaseOption): Instance of BaseOption, provies the strike/maturity
+      option (BaseOption): Instance of BaseOption, provides the strike/maturity
       heston (Heston): Intance of the Heston model, provides the characteristic function
       r: Risk-free interest rate
 
