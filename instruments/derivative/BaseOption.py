@@ -22,6 +22,7 @@ class BaseOption(BaseDerivative):
         maturity (float): The maturity (time to expiration) of the option.
     """
 
+    call: bool
     strike: float
     maturity: float
     _underlier: BaseInstrument
@@ -34,7 +35,7 @@ class BaseOption(BaseDerivative):
         This method must be implemented by subclasses and should define the specific
         payoff logic, including handling path-dependent scenarios where the payoff
         depends on the full price path or intermediate values of the _underlier(s).
-        
+
         Returns:
             Tensor: A tensor of shape `(n_paths,)` representing the computed payoff
             for each simulated path.
@@ -68,6 +69,29 @@ class BaseOption(BaseDerivative):
         payoff = self.payoff_fn()
         return payoff
 
+    @property
+    def intrsc(self) -> Tensor:
+        """
+        Calculate the intrinsic value of an option.
+
+        This method computes the intrinsic value of an option based on its type 
+        (call or put) and its current spot price and strike price. For call options, 
+        the intrinsic value is the maximum of (spot price - strike price, 0). For put 
+        options, it is the maximum of (strike price - spot price, 0).
+
+        Returns:
+            Tensor: The intrinsic value of the option as a PyTorch tensor.
+        """
+        cpintrsc = (
+            torch.maximum(self.spot - self.strike, torch.tensor(0, device=self.device))
+            if self.call
+            else torch.maximum(
+                self.strike - self.spot, torch.tensor(0, device=self.device)
+            )
+        )
+        return cpintrsc
+
+    @property
     def moneyness(self, step: Optional[int] = None, log: bool = False) -> Tensor:
         """
         Computes the moneyness or log-moneyness of the instrument.
