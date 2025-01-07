@@ -10,7 +10,7 @@ from ..primary import Heston
 from .BaseOption import BaseOption
 
 
-########################## AMERICAN ##########################
+########################## EUROPEAN ##########################
 
 def heston_option_price(heston: Heston, option: BaseOption, r: float, option_type=str):
     if option_type == "call":
