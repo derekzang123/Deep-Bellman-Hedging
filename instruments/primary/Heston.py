@@ -77,27 +77,28 @@ class Heston(BasePrimary):
         """
         return self.get_buffer("spot")
 
-    def pricer(self, spot: torch.Tensor, vol: torch.Tensor, option_type) -> torch.Tensor:
+    def characteristic_function(self, u: torch.Tensor, K: float, T: float, r: float):
         """
+        Characteristic function of Heston model
         Args:
-            spot:
-            vol:
-            option_type:
+            u(torch.Tensor): Integration variable
+            K(float): Strike price of the option
+            T(float): Maturity of the option
+            r(float): Risk-free rate
 
         Returns:
-            torch.Tensor: Price
 
         """
-        if option_type == "call":
-            option_price = None
-        elif option_type == "price":
-            option_price = None
-        else:
-            raise ValueError("Option type must be 'call' or 'put'")
+        xi = self.kappa - self.rho * self.xi * 1j * u
+        d = torch.sqrt((self.rho * self.xi * 1j * u - xi) ** 2 - self.xi ** 2 * (-u * 1j - u ** 2))
+        g = (xi - self.rho * self.xi * 1j * u - d) / (xi - self.rho * self.xi * 1j * u + d)
 
-        return option_price
+        C = (
+                r * 1j * u * self.T
+                + (self.kappa * self.theta) / self.xi ** 2
+                * ((xi - self.rho * self.xi * 1j * u - d) * self.T - 2 * torch.log(
+            (1 - g * torch.exp(-d * self.T)) / (1 - g))))
+        D = (xi - self.rho * self.xi * 1j * u - d) / self.xi ** 2 * (
+                    (1 - torch.exp(-d * self.T)) / (1 - g * torch.exp(-d * self.T)))
 
-
-
-
-
+        return torch.exp(C + D * self.v0 + 1j * u * torch.log(self.S0))

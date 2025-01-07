@@ -31,3 +31,12 @@ class Vasicek(BasePrimary):
     def spot(self) -> torch.Tensor:
         return self.get_buffer("spot")
 
+    def interest_rates(self) -> torch.Tensor:
+        """
+        Retrieves the simulated interest rate paths.
+        Returns:
+            torch.Tensor: contains simulated interest rate paths.
+
+        """
+        return self.get_buffer("interest_rates")
+
