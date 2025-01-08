@@ -1,6 +1,7 @@
 import torch
+import matplotlib.pyplot as plt
 
-from .BasePrimary import BasePrimary
+from instruments.primary.BasePrimary import BasePrimary
 class Vasicek(BasePrimary):
     def __init__(self, theta: float, mu: float, sigma: float, r0: float, T: float, n_steps: int, dtype=torch.float32, device=torch.device('cpu')) -> None:
         super().__init__()
@@ -14,7 +15,7 @@ class Vasicek(BasePrimary):
         self.dtype = dtype
         self.device = device
 
-    def vasicek(self, n_paths: int) -> None:
+    def simulate(self, n_paths: int) -> None:
         N = self.n_steps
         r = torch.zeros((n_paths, N + 1), dtype=self.dtype, device=self.device)
         r[:, 0] = self.r0
@@ -39,4 +40,5 @@ class Vasicek(BasePrimary):
 
         """
         return self.get_buffer("interest_rates")
+
 
