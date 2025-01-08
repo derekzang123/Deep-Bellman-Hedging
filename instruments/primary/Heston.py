@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .BasePrimary import BasePrimary
+from instruments.primary.BasePrimary import BasePrimary
 
 import torch
 
@@ -102,3 +102,41 @@ class Heston(BasePrimary):
                     (1 - torch.exp(-d * self.T)) / (1 - g * torch.exp(-d * self.T)))
 
         return torch.exp(C + D * self.v0 + 1j * u * torch.log(self.S0))
+
+    def main():
+        # Parameters for the Heston model
+        S0 = 100  # Initial stock price
+        v0 = 0.04  # Initial variance
+        rho = -0.7  # Correlation
+        kappa = 2.0  # Mean reversion rate
+        theta = 0.04  # Long-term variance
+        xi = 0.5  # Volatility of volatility
+        mu = 0.05  # Drift
+        n_steps = 100  # Number of time steps
+        T = 1.0  # Total time (1 year)
+        n_paths = 10  # Number of simulation paths
+
+        # Initialize the Heston model
+        heston_model = Heston(S0, v0, rho, kappa, theta, xi, mu, n_steps, T)
+
+        # Simulate the stock prices
+        heston_model.simulate(n_paths=n_paths, duration=T)
+
+        # Retrieve simulated stock prices
+        stock_prices = heston_model.get_buffer("stock_prices")
+
+        # Plot the simulated stock price paths
+        time_grid = torch.linspace(0, T, n_steps + 1)
+        for i in range(n_paths):
+            plt.plot(time_grid.numpy(), stock_prices[i].numpy(), label=f'Path {i + 1}')
+
+        plt.title("Simulated Stock Price Paths (Heston Model)")
+        plt.xlabel("Time (years)")
+        plt.ylabel("Stock Price")
+        plt.legend(loc="upper left", fontsize="small")
+        plt.grid()
+        plt.show()
+
+    if __name__ == "__main__":
+        main()
+
