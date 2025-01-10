@@ -6,8 +6,8 @@ from typing import TypeVar
 import torch
 from torch import Tensor
 
-from ..BaseInstrument import BaseInstrument
-from .BaseDerivative import BaseDerivative
+from instruments.BaseInstrument import BaseInstrument
+from instruments.derivative.BaseDerivative import BaseDerivative
 
 T = TypeVar("T", bound="BaseOption")
 

@@ -9,7 +9,7 @@ from typing import TypeVar
 import torch
 from torch import Tensor
 
-from ..BaseInstrument import BaseInstrument
+from instruments.BaseInstrument import BaseInstrument
 
 T = TypeVar("T", bound="BasePrimary")
 

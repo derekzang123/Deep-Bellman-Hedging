@@ -11,8 +11,8 @@ from typing import TypeVar
 import torch
 from torch import Tensor
 
-from ..BaseInstrument import BaseInstrument
-from ..primary.BasePrimary import BasePrimary
+from instruments.BaseInstrument import BaseInstrument
+from instruments.primary.BasePrimary import BasePrimary
 
 T = TypeVar("T", bound="BaseDerivative")
 Clause = Callable[[T, Tensor], Tensor]
@@ -58,8 +58,8 @@ class BaseDerivative(BaseInstrument):
         Raises:
             AttributeError: If there are multiple underliers.
         """
-        if len(list(self._underliers())) == 1:
-            return self._underliers.items()[0][1].dtype
+        if len(list(self._underliers)) == 1:
+            return next(iter(self._underliers.values())).dtype
         else:
             raise AttributeError(
                 "dtype() is not well-defined for a derivative with multiple underliers"
@@ -73,8 +73,8 @@ class BaseDerivative(BaseInstrument):
         Raises:
             AttributeError: If there are multiple underliers.
         """
-        if len(list(self._underliers())) == 1:
-            return self._underliers.items()[0][1].device
+        if len(list(self._underliers)) == 1:
+            return next(iter(self._underliers.values())).device
         else:
             raise AttributeError(
                 "device() is not well-defined for a derivative with multiple underliers"
@@ -100,7 +100,7 @@ class BaseDerivative(BaseInstrument):
         Returns:
             BasePrimary: The underlier at the specified index.
         """
-        return self._underliers.items()[index][1]
+        return list(self._underliers.items())[index][1]
 
     def to(self: T, *args: Any, **kwargs: Any) -> T:
         """
@@ -142,7 +142,7 @@ class BaseDerivative(BaseInstrument):
         Returns:
             torch.Tensor: Adjusted payoff values.
         """
-        payoff = self.payoff_fn
+        payoff = self.payoff_fn()
         for _, clause in self._clauses.items():
             payoff = clause(self, payoff)
         return payoff
@@ -244,7 +244,7 @@ class BaseDerivative(BaseInstrument):
         """
         if name in self._underliers:
             return self._underliers[name]
-        raise ValueError(self._get_name() + " has no buffer named " + name)
+        raise ValueError(self._get_name() + " has no underlier named " + name)
 
     def __getattr__(self, name: str) -> BasePrimary:
         """
@@ -294,6 +294,7 @@ class BaseDerivative(BaseInstrument):
         Returns:
             torch.Tensor: Covariance tensor of _underliers
         """
+        print("initializing")
         spots, vars = zip(
             *(
                 (underlier.spot, underlier.var)
