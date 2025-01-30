@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Iterator
+from typing import Iterator, TypeVar
 
 import torch
 from torch import Tensor
