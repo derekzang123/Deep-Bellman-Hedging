@@ -50,37 +50,7 @@ class BaseDerivative(BaseInstrument):
         self._clauses = OrderedDict()
         self._underliers = OrderedDict()
 
-    @property
-    def dtype(self) -> Optional[torch.dtype]:
-        """
-        Returns the data type of the underlier(s).
-
-        Raises:
-            AttributeError: If there are multiple underliers.
-        """
-        if len(list(self._underliers)) == 1:
-            return next(iter(self._underliers.values())).dtype
-        else:
-            raise AttributeError(
-                "dtype() is not well-defined for a derivative with multiple underliers"
-            )
-
-    @property
-    def device(self) -> Optional[torch.device]:
-        """
-        Returns the device of the underlier(s).
-
-        Raises:
-            AttributeError: If there are multiple underliers.
-        """
-        if len(list(self._underliers)) == 1:
-            return next(iter(self._underliers.values())).device
-        else:
-            raise AttributeError(
-                "device() is not well-defined for a derivative with multiple underliers"
-            )
-
-    def simulate(self, n_paths: int) -> None:
+    def simulate(self, n_paths: int, n_steps: int) -> Iterator[Tensor]:
         """
         Simulate time series associated with the underlier.
 
@@ -101,21 +71,6 @@ class BaseDerivative(BaseInstrument):
             BasePrimary: The underlier at the specified index.
         """
         return list(self._underliers.items())[index][1]
-
-    def to(self: T, *args: Any, **kwargs: Any) -> T:
-        """
-        Transfers the derivative and its underliers to a specified device.
-
-        Args:
-            *args: Positional arguments for the device transfer.
-            **kwargs: Keyword arguments for the device transfer.
-
-        Returns:
-            T: The updated instance of the derivative.
-        """
-        for _, underlier in self._underliers.items():
-            underlier.to(*args, **kwargs)
-        return self
 
     @abstractmethod
     def payoff_fn(self) -> Tensor:
@@ -269,44 +224,3 @@ class BaseDerivative(BaseInstrument):
         if isinstance(value, BasePrimary):
             self.register_underlier(name, value)
         super().__setattr__(name, value)
-
-    @property
-    def spot(self) -> Tensor:
-        """
-        Computes the spot price of the derivative.
-
-        Returns:
-            torch.Tensor: Spot price.
-
-        Raises:
-            ValueError: If the derivative is not listed.
-        """
-        if self.pricer is None:
-            raise ValueError("self is not listed.")
-        return self.pricer(self)
-
-    @property
-    def var(self) -> Tensor:
-        """
-        Computes the derivative's basket variance tensor for a series of underliers
-        according to the equation bvar = Σ_i w_i^2 * Var_i + Σ_i Σ_j w_i * w_j * Cov(i, j)
-
-        Returns:
-            torch.Tensor: Covariance tensor of _underliers
-        """
-        print("initializing")
-        spots, vars = zip(
-            *(
-                (underlier.spot, underlier.var)
-                for _, underlier in self._underliers.items()
-            )
-        )
-        spots = torch.stack(spots)
-        vars = torch.stack(vars)
-
-        ssum = torch.sum(spots)
-        weights = spots / ssum
-        bvar = torch.sum(weights**2 * vars, dim=0) + torch.einsum(
-            "ikl,jkl->kl", weights, weights * vars
-        )
-        return bvar

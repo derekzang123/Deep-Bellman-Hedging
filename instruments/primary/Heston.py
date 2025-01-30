@@ -5,8 +5,10 @@ from instruments.primary.BasePrimary import BasePrimary
 
 import torch
 
+
 class Heston(BasePrimary):
-    def __init__(self, S0: float, v0: float, rho: float, kappa: float, theta: float, xi: float, mu: float, n_steps: int, T: float, dtype=torch.float32, device=torch.device('cpu')) -> None:
+    def __init__(self, S0: float, v0: float, rho: float, kappa: float, theta: float, xi: float, mu: float, n_steps: int,
+                 T: float, dtype=torch.float32, device=torch.device('cpu')) -> None:
         """
         Args:
             S0: Current price of underlying asset
@@ -36,46 +38,46 @@ class Heston(BasePrimary):
         self.device = device
 
     def simulate(self, n_paths: int, duration: float) -> None:
+        """
+        Simulate paths for spot prices and variances for the Heston model.
+        Args:
+            n_paths: Number of paths to simulate
+            duration: Total duration of the simulation
+
+        Yields:
+            (Tensor, Tensor): The current spot prices and variances at each time step
+        """
         n_steps = int(duration / self.dt)
 
-        S = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
-        v = torch.zeros((n_paths, n_steps + 1), dtype=self.dtype, device=self.device)
+        # TODO - initialize s and v to s0 and v0 and have simulation go form there ,,, add generator loop to world.py
+        S = torch.zeros((n_paths,), dtype=self.dtype, device=self.device)
+        v = torch.zeros((n_paths,), dtype=self.dtype, device=self.device)
 
-        S[:, 0] = self.S0
+        yield S, v
 
         for t in range(1, n_steps + 1):
+            # Independent Brownian motions
             Z1 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
                               std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
             Z2 = torch.normal(mean=torch.zeros(n_paths, dtype=self.dtype, device=self.device),
                               std=torch.ones(n_paths, dtype=self.dtype, device=self.device))
 
+            # Generate correlated Brownian motions
             W1 = Z1
-            W2 = self.rho * Z1 + torch.sqrt(torch.tensor(1.0 - self.rho ** 2, dtype=self.dtype, device=self.device)) * Z2
+            W2 = self.rho * Z1 + torch.sqrt(
+                torch.tensor(1.0 - self.rho ** 2, dtype=self.dtype, device=self.device)) * Z2
 
             # Variance process (CIR model)
-            v[:, t] = torch.abs(
-                v[:, t - 1] +
-                self.kappa * (self.theta - v[:, t - 1]) * self.dt +
-                self.xi * torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W2)
+            v = torch.abs(
+                v + self.kappa * (self.theta - v) * self.dt +
+                self.xi * torch.sqrt(v) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W2)
 
             # Stock price process
-            S[:, t] = S[:, t - 1] * torch.exp(
-                (self.mu - 0.5 * v[:, t - 1]) * self.dt +
-                torch.sqrt(v[:, t - 1]) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W1)
+            S = S * torch.exp(
+                (self.mu - 0.5 * v) * self.dt +
+                torch.sqrt(v) * torch.sqrt(torch.tensor(self.dt, dtype=self.dtype, device=self.device)) * W1)
 
-        self.add_buffer("stock_prices", S)
-        self.add_buffer("variances", v)
-        self.add_buffer("spot", S[:, -1])
-
-    @property
-    def spot(self) -> torch.Tensor:
-        """
-        Returns the spot price (stock prices) buffer of the instrument.
-
-        Returns:
-            torch.Tensor: The stock price tensor.
-        """
-        return self.get_buffer("spot")
+            yield S, v
 
     def characteristic_function(self, u: torch.Tensor, K: float, T: float, r: float):
         """
@@ -99,44 +101,6 @@ class Heston(BasePrimary):
                 * ((xi - self.rho * self.xi * 1j * u - d) * self.T - 2 * torch.log(
             (1 - g * torch.exp(-d * self.T)) / (1 - g))))
         D = (xi - self.rho * self.xi * 1j * u - d) / self.xi ** 2 * (
-                    (1 - torch.exp(-d * self.T)) / (1 - g * torch.exp(-d * self.T)))
+                (1 - torch.exp(-d * self.T)) / (1 - g * torch.exp(-d * self.T)))
 
         return torch.exp(C + D * self.v0 + 1j * u * torch.log(self.S0))
-
-    def main():
-        # Parameters for the Heston model
-        S0 = 100  # Initial stock price
-        v0 = 0.04  # Initial variance
-        rho = -0.7  # Correlation
-        kappa = 2.0  # Mean reversion rate
-        theta = 0.04  # Long-term variance
-        xi = 0.5  # Volatility of volatility
-        mu = 0.05  # Drift
-        n_steps = 100  # Number of time steps
-        T = 1.0  # Total time (1 year)
-        n_paths = 10  # Number of simulation paths
-
-        # Initialize the Heston model
-        heston_model = Heston(S0, v0, rho, kappa, theta, xi, mu, n_steps, T)
-
-        # Simulate the stock prices
-        heston_model.simulate(n_paths=n_paths, duration=T)
-
-        # Retrieve simulated stock prices
-        stock_prices = heston_model.get_buffer("stock_prices")
-
-        # Plot the simulated stock price paths
-        time_grid = torch.linspace(0, T, n_steps + 1)
-        for i in range(n_paths):
-            plt.plot(time_grid.numpy(), stock_prices[i].numpy(), label=f'Path {i + 1}')
-
-        plt.title("Simulated Stock Price Paths (Heston Model)")
-        plt.xlabel("Time (years)")
-        plt.ylabel("Stock Price")
-        plt.legend(loc="upper left", fontsize="small")
-        plt.grid()
-        plt.show()
-
-    if __name__ == "__main__":
-        main()
-
