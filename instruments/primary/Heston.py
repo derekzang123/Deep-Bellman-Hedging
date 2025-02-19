@@ -24,6 +24,7 @@ class HestonPathsGenerator(BasePrimary):
             device: Device for tensors
         """
         super().__init__()
+
         # Model parameters
         self.S0 = S0
         self.v0 = v0
@@ -32,6 +33,9 @@ class HestonPathsGenerator(BasePrimary):
         self.theta = theta
         self.xi = xi
         self.mu = mu
+
+        # Interest state buffer
+        self.interest = None
 
         # Simulation parameters
         self.T = T
@@ -46,7 +50,31 @@ class HestonPathsGenerator(BasePrimary):
         # State buffers
         self.S = None
         self.v = None
+
+        # Global parameters
         self.current_step = 0
+
+    def vasicek_step(self):
+        """
+        Advances the Heston model by one time step.
+        Returns:
+        dict: A dictionary containing:
+            - "interest_rate" (Tensor): The simulated interest ratesat the current step.
+
+        """
+        pass
+
+    def vasicek_simulate(self):
+        """
+        Simulate paths for spot prices and variances for the Heston model.
+        Args:
+            n_paths: Number of paths to simulate
+            duration: Total duration of the simulation
+
+        Yields:
+            (Tensor, Tensor): The current spot prices and variances at each time step
+        """
+        pass
 
     def reset(self, n_paths: int) -> None:
         """Resets the simulator to initial state"""
@@ -63,15 +91,15 @@ class HestonPathsGenerator(BasePrimary):
         return W1 * self.sqrt_dt, W2 * self.sqrt_dt
 
     def step(self) -> dict:
-        def step(self) -> dict:
-            """
-            Advances the Heston model by one time step using the Full Truncation Euler Scheme to ensure non-negative variance.
-            Returns:
-                dict: A dictionary containing:
-                    - "spot" (Tensor): The simulated spot prices at the current step.
-                    - "volatility" (Tensor): The simulated variance values at the current step.
-                    - "current_step" (int): The current step in the Heston model.
-            """
+        """
+        Advances the Heston model by one time step using the Full Truncation Euler Scheme to ensure
+        non-negative variance.
+        Returns:
+            dict: A dictionary containing:
+                - "spot" (Tensor): The simulated spot prices at the current step.
+                - "volatility" (Tensor): The simulated variance values at the current step.
+                - "current_step" (int): The current step in the Heston model.
+        """
 
         n_paths = self.S.shape[0]
         dW1, dW2 = self.generate_brownians(n_paths)
@@ -90,7 +118,7 @@ class HestonPathsGenerator(BasePrimary):
         )
         self.current_step += 1
 
-        return {"spot": self.S.clone(), "var": self.v.clone(), "nstep": self.current_step}
+        return {"spot": self.S.clone(), "var": self.v.clone(), "nstep": self.current_step, "interest_rate": self.interest_rate}
 
     # Add n_steps
     def simulate(self, n_paths: int, duration: float) -> tuple[Tensor, Tensor]:
