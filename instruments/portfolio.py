@@ -3,14 +3,22 @@ from torch import Tensor
 from typing import OrderedDict
 from .derivative.BaseOption import BaseOption
 from torch.distributions.distribution import Distribution
+from collections import deque
 
-class Portfolio():
-    wvec : Tensor
-    ovec : OrderedDict[str, BaseOption]
-    otraj: Deque[Tensor]
+
+class Portfolio:
+    wvec: Tensor
+    ovec: OrderedDict[str, BaseOption]
+    otraj: deque[Tensor]
 
     def init(self, dist: Distribution):
-        self.wvec = dist.sample((len(self.ovec,)))
+        self.wvec = dist.sample(
+            (
+                len(
+                    self.ovec,
+                )
+            )
+        )
 
     def simulate(self, n_steps: int, n_paths: int):
         generators = [
@@ -25,5 +33,7 @@ class Portfolio():
                 except StopIteration:
                     value = torch.zeros(n_paths)
                 trajectories[i].append(value)
-        trajectories = [w * torch.stack(traj, dim=-1) for w, traj in zip(self.wvec, trajectories)]
+        trajectories = [
+            w * torch.stack(traj, dim=-1) for w, traj in zip(self.wvec, trajectories)
+        ]
         self.otraj = torch.stack(trajectories, dim=1)
