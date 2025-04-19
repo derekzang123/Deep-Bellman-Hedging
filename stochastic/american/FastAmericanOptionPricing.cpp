@@ -1,14 +1,25 @@
+#include "FastAmericanOptionPricing.h"
 #include <vector> 
 #include <cmath> 
 
-/*
-STEP 1: Compute Chebyshev Nodes
-*/
-std::vector<double> computeNodes(int n, int tMax)
-{ 
+const double PI = atan(1) * 4;
+
+enum class OptionType {Call, Put};
+
+struct BlackScholesParams { 
+    double K;
+    double vol;
+    double r;
+    double q;
+    OptionType type;
+};
+
+
+/* STEP 1: Compute Chebyshev Nodes */
+std::vector<double> computeNodes(int n, int tMax) { 
     std::vector<double> zVec, xVec;
     for (int i = 0; i < n; i++) {
-        double z = -1 * std::cos((i*M_PI)/n);
+        double z = -1 * std::cos((i*PI)/n);
         double x = std::sqrt(tMax) / 2;
         x *= 1 + z;
         xVec.push_back(x);
@@ -34,7 +45,7 @@ std::vector<std::vector<double>> quadrature(int l, double h)
     std::vector<double> weights;
     int half_l = (l + 1) / 2;
     for (int k = 0; k < half_l; k++) {
-        double n = std::tanh(0.5 * M_PI * std::sinh(k*h));
+        double n = std::tanh(0.5 * PI * std::sinh(k*h));
         double w = (0.5 * h * std::cosh(k * h)) / std::pow(std::cosh(0.5 * M_PI * std::sinh(k * h)), 2);
         nodes.push_back(n);
         weights.push_back(w);
@@ -46,13 +57,3 @@ std::vector<std::vector<double>> quadrature(int l, double h)
     return {nodes, weights};
 }
 
-/* STEP 3: QD+ approximation */
-struct HestonParams { 
-    double strike;
-    double volatility;
-};
-
-std::vector<double> qd_plus (std::vector<double> tau, const HestonParams& params) 
-{
-    return {};
-}

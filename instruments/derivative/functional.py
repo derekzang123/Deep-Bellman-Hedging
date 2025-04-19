@@ -6,7 +6,7 @@ from scipy.integrate import quad
 import torch
 from torch import Tensor
 
-from ..primary import Heston
+from ...stochastic import Heston
 from .BaseOption import BaseOption
 
 
