@@ -18,6 +18,7 @@ public:
     QDPlus(const BlackScholes& bs_, int n_, int m_, int l_, double tauMax_);
 
     void initBoundary();
+    std::vector<double> getBoundary() { return boundary };
     double qdPlusApprox(double tau);
 
 };

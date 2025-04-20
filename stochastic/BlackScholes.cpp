@@ -1,5 +1,6 @@
 #include "BlackScholes.h"
 #include "american/FastAmericanOptionPricing.h"
+#include "american/QD_plus.h"
 
 
 BlackScholes::BlackScholes(double S_, double K_, double r_, double q_, double T_, double vol_, 
@@ -9,8 +10,15 @@ rng(std::random_device{}()), dist(0.0, 1.0) {
 }
 
 double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
-    auto xVec = computeNodes(n + 1, tauMax);
-    // fast american logic
+    auto xVec = computeNodes(n + 1, tauMax); // Step 1
+    auto tauNodes = computeCollocation(xVec);
+
+    QDPlus qd(*this, n, m, l, tauMax);
+    qd.initBoundary();
+
+    auto B = qd.getBoundary();
+    
+    // Remainder of Fast American logic
     return 0.0;
 }
 
