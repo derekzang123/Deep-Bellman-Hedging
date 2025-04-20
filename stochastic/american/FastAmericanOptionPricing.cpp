@@ -2,19 +2,6 @@
 #include <vector> 
 #include <cmath> 
 
-const double PI = atan(1) * 4;
-
-enum class OptionType {Call, Put};
-
-struct BlackScholesParams { 
-    double K;
-    double vol;
-    double r;
-    double q;
-    OptionType type;
-};
-
-
 /* STEP 1: Compute Chebyshev Nodes */
 std::vector<double> computeNodes(int n, int tMax) { 
     std::vector<double> zVec, xVec;
