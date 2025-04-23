@@ -8,7 +8,7 @@ QDPlus::QDPlus(const BlackScholes& bs_, int n_, int m_, int l_, double tauMax_)
       l(l_),
       tauMax(tauMax_)
 {
-
+ // placeholder 
 }
 
 

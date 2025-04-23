@@ -47,6 +47,9 @@ public:
         return vol;
     }
 
+    double getDminus(double tau, double z);
+    double getDplus(double tau, double z);
+
     OptionType getType() { return type; }
 
     ExerciseStyle getStyle() { return style; }

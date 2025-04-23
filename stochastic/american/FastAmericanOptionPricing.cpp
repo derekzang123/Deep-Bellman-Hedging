@@ -33,7 +33,7 @@ std::vector<std::vector<double>> quadrature(int l, double h)
     int half_l = (l + 1) / 2;
     for (int k = 0; k < half_l; k++) {
         double n = std::tanh(0.5 * PI * std::sinh(k*h));
-        double w = (0.5 * h * std::cosh(k * h)) / std::pow(std::cosh(0.5 * M_PI * std::sinh(k * h)), 2);
+        double w = (0.5 * h * std::cosh(k * h)) / std::pow(std::cosh(0.5 * PI * std::sinh(k * h)), 2);
         nodes.push_back(n);
         weights.push_back(w);
         if (k > 0 || l % 2 == 0) {
