@@ -28,17 +28,13 @@ double BlackScholes::price() const {
 }
 
 double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
-    auto twoVec = computeNodes(n + 1, tauMax);
-    auto xVec = twoVec[0], zVec = twoVec[1];
+    auto [xVec, zVec] = computeNodes(n + 1, tauMax);
     auto tauNodes = computeCollocation(xVec);
-
-    QDPlus qd(*this, n, m, l, tauMax); // init QD object
+    auto [quadNodes, quadWeights] = quadrature(l, 0.5);
+    QDPlus qd(*this, n, m, l, tauMax); 
     qd.initBoundary();
-
     auto B = qd.getBoundary();
-
-    double X = q > r ? (K * (r/q)) : K;
-
+    double X = (r >= q) ? K : K * (r/q);
     std::vector<double> H;
 
     for(auto& B_i : B) {
@@ -47,7 +43,7 @@ double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
 
     auto coeffs = cWeights(H);
     
-    for(size_t i = 1; i < tauNodes.size(); i++) {
+    for(int i = 1; i < m; i++) {
         /// 6: ...pushback(qC(t_i - t_i * (1 + y_k)^2 / 4))
     }
 
