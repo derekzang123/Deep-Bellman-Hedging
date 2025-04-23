@@ -3,7 +3,7 @@
 #include <cmath> 
 
 /* STEP 1: Compute Chebyshev Nodes */
-std::vector<std::vector<double>> computeNodes(int n, int tMax) { 
+std::pair<std::vector<double>, std::vector<double>> computeNodes(int n, int tMax) { 
     std::vector<double> zVec, xVec;
     for (int i = 0; i < n; i++) {
         double z = -1 * std::cos((i*PI)/n);
@@ -27,7 +27,7 @@ std::vector<double> computeCollocation(std::vector<double> xVec)
 
 
 /* STEP 2: Tanh-Sinh Quadrature*/
-std::vector<std::vector<double>> quadrature(int l, double h) 
+std::pair<std::vector<double>, std::vector<double>> quadrature(int l, double h) 
 {
     std::vector<double> nodes;
     std::vector<double> weights;
