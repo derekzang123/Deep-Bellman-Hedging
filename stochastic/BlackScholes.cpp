@@ -5,9 +5,8 @@
 
 BlackScholes::BlackScholes(double S_, double K_, double r_, double q_, double T_, double vol_, 
     int N_, int steps_, OptionType type_, ExerciseStyle style_)
-: S(S_), K(K_), r(r_), q(q_), T(T_), vol(vol_), N(N_), steps(steps_), type(type_), style(style_),
-rng(std::random_device{}()), dist(0.0, 1.0) {
-}
+    : S(S_), K(K_), r(r_), q(q_), T(T_), vol(vol_), N(N_), steps(steps_), type(type_), style(style_),
+    rng(std::random_device{}()), dist(0.0, 1.0) { }
 
 double BlackScholes::getDplus(double tau, double z) { 
     double num = (std::log(z) + (r - q) * tau + 0.5 * vol * vol * tau);
@@ -29,7 +28,8 @@ double BlackScholes::price() const {
 }
 
 double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
-    auto xVec = computeNodes(n + 1, tauMax); // Step 1
+    auto twoVec = computeNodes(n + 1, tauMax);
+    auto xVec = twoVec[0], zVec = twoVec[1];
     auto tauNodes = computeCollocation(xVec);
 
     QDPlus qd(*this, n, m, l, tauMax); // init QD object
@@ -45,6 +45,16 @@ double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
         H.push_back(std::pow(std::log(B_i / X), 2));
     }
 
+    auto coeffs = cWeights(H);
+    
+    for(size_t i = 1; i < tauNodes.size(); i++) {
+        /// 6: ...pushback(qC(t_i - t_i * (1 + y_k)^2 / 4))
+    }
+
+    /*
+    N = getN(tauNodes,B);
+    D = getD(tauNodes,B);
+    */
 
     
     

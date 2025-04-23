@@ -3,15 +3,16 @@
 #include <cmath> 
 
 /* STEP 1: Compute Chebyshev Nodes */
-std::vector<double> computeNodes(int n, int tMax) { 
+std::vector<std::vector<double>> computeNodes(int n, int tMax) { 
     std::vector<double> zVec, xVec;
     for (int i = 0; i < n; i++) {
         double z = -1 * std::cos((i*PI)/n);
         double x = std::sqrt(tMax) / 2;
         x *= 1 + z;
         xVec.push_back(x);
+        zVec.push_back(z);
     }
-    return xVec;
+    return {xVec, zVec};
 }
 
 std::vector<double> computeCollocation(std::vector<double> xVec) 
@@ -44,3 +45,41 @@ std::vector<std::vector<double>> quadrature(int l, double h)
     return {nodes, weights};
 }
 
+std::vector<double> cWeights(std::vector<double> H) { 
+    int N = H.size() - 1;
+    std::vector<double> a (N + 1);
+    for(int k = 0; k <= N; k++) { 
+        a[k] = (H[0] + (k % 2 == 0 ? 1.0 : -1.0) * H[N]) / (2.0 * N);
+        for (int i = 1; i < N; i++) {
+            a[k] += 2.0 / N * H[i] * std::cos(PI * i * k / N);
+        }
+    }
+    return a;
+}
+
+std::vector<double> cBasis(double z, int N, bool F) {
+    std::vector<double> TVec (N + 1);
+    if (N >= 1) {
+        TVec[0] = 1.0;
+    }
+    TVec[1] = F && N >= 2 ? z : 2 * z;
+    for (size_t n = 2; n <= N; n ++) {
+        TVec[n] = 2.0 * TVec[1] * TVec[n-1] - TVec[n-2];
+    }
+    return TVec;
+}
+
+double qC(double z, const std::vector<double>& a) {
+    const int N = a.size() - 1; 
+    if (N < 0) return 0.0; 
+
+    double b_k1 = a[N];
+    double b_k2 = 0.0; 
+    
+    for (int k = N - 1; k >= 1; --k) {
+        double b_k = a[k] + 2.0 * z * b_k1 - b_k2;
+        b_k2 = b_k1;
+        b_k1 = b_k;
+    }
+    return a[0] + z * b_k1 - b_k2;
+}
