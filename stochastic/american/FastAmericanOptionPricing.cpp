@@ -1,4 +1,6 @@
 #include "FastAmericanOptionPricing.h"
+#include "../BlackScholes.h"
+#include "../Normal.h"
 #include <vector> 
 #include <cmath> 
 
@@ -15,8 +17,7 @@ std::pair<std::vector<double>, std::vector<double>> computeNodes(int n, int tMax
     return {xVec, zVec};
 }
 
-std::vector<double> computeCollocation(std::vector<double> xVec) 
-{
+std::vector<double> computeCollocation(std::vector<double> xVec) {
     std::vector<double> tau;
     for (int i = 0; i <= xVec.size() - 1; i++) {
         double t = std::pow(xVec[i], 2);
@@ -27,8 +28,7 @@ std::vector<double> computeCollocation(std::vector<double> xVec)
 
 
 /* STEP 2: Tanh-Sinh Quadrature*/
-std::pair<std::vector<double>, std::vector<double>> quadrature(int l, double h) 
-{
+std::pair<std::vector<double>, std::vector<double>> quadrature(int l, double h) {
     std::vector<double> nodes;
     std::vector<double> weights;
     int half_l = (l + 1) / 2;
@@ -97,4 +97,52 @@ double quadSum (std::function<double(double)>& f,
             return f(x) * w;
         }
     );
+}
+
+auto K1I(double t, double q, double sigma,
+    std::function<double(double)>& B) {
+        return [t, q, sigma, &B](double y) {
+            double u = t * std::pow(y + 1.0, 2) / 4.0;
+            double Bt = B(t);
+            double Bu = B(u);
+        
+            double d_plus = (std::log(Bt/Bu) + (q + 0.5*sigma*sigma)*(t-u)) 
+                / (sigma*std::sqrt(t-u));
+        
+
+        return std::exp(q*u) * Normal::PDF(d_plus, 0.0, 1.0) * (t/2.0)*(1.0 + y);
+        };
+}
+
+auto K2I(double t, double q, double sigma,
+    std::function<double(double)>& B) {
+        // TODO
+}
+
+auto K3I(double t, double r, double sigma,
+    std::function<double(double)>& B) {
+        // TODO
+}
+
+double computeK1(double tau, double q, double sigma,
+    std::vector<double>& nodes,
+    std::vector<double>& weights,
+    std::function<double(double)>& B) 
+    {
+        std::function<double(double)> integrand = K1I(tau, q, sigma, B);
+        return 0.5 * tau * std::exp(-q*tau) * quadSum(integrand, nodes, weights);
+}
+
+double computeK2(double tau, double q, double sigma,
+    std::vector<double>& nodes,
+    std::vector<double>& weights,
+    std::function<double(double)>& B) {
+        // TODO
+}
+
+double computeK3(double tau, double r, double sigma,
+    std::vector<double>& nodes,
+    std::vector<double>& weights,
+    std::function<double(double)>& B) {
+        // TODO 
 }

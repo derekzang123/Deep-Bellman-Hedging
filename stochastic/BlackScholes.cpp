@@ -22,7 +22,9 @@ double BlackScholes::getDminus(double tau, double z) {
 
 double BlackScholes::price() const {
     if (style == ExerciseStyle::American) {
-        return priceAmerican(1,2,3,4.0); // Placeholder values -- fill with whatever n , m, l, taumax is
+        int n = 1, m = 1, l = 1;
+        double tauMax = 1.0; // placeholders
+        return priceAmerican(n, m, l, tauMax); 
     }
     return priceEuropean();
 }
