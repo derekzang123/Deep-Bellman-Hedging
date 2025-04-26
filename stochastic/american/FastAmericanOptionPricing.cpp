@@ -83,3 +83,18 @@ double qC(double z, const std::vector<double>& a) {
     }
     return a[0] + z * b_k1 - b_k2;
 }
+
+double quadSum (std::function<double(double)>& f, 
+                std::vector<double> nodes, 
+                std::vector<double> weights) 
+{
+    return std::transform_reduce(
+        nodes.begin(), nodes.end(),
+        weights.begin(), 
+        0.0, 
+        std::plus<>(),
+        [&f](double x, double w) {
+            return f(x) * w;
+        }
+    );
+}
