@@ -290,7 +290,7 @@ double D_ (
 
 double f(
     double t, 
-	double r, 
+    double r, 
     double q,
 	double s,
 	double K,
