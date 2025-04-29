@@ -2,8 +2,8 @@
 #define NORMAL_DISTRIBUTION_H
 
 namespace Normal {
-    double PDF(double x, double mean, double stddev);
-    double CDF(double x, double mean, double stddev);
+    double NPDF(double x, double mean, double stddev);
+    double NCDF(double x, double mean, double stddev);
 }
 
 #endif
