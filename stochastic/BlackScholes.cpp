@@ -8,13 +8,13 @@ BlackScholes::BlackScholes(double S_, double K_, double r_, double q_, double T_
     : S(S_), K(K_), r(r_), q(q_), T(T_), vol(vol_), N(N_), steps(steps_), type(type_), style(style_),
     rng(std::random_device{}()), dist(0.0, 1.0) { }
 
-double BlackScholes::getDplus(double tau, double z) { 
+double BlackScholes::getDplus(double tau, double z) const { 
     double num = (std::log(z) + (r - q) * tau + 0.5 * vol * vol * tau);
     double den = (vol * std::sqrt(tau));
     return (double)(num / den);
 }
 
-double BlackScholes::getDminus(double tau, double z) { 
+double BlackScholes::getDminus(double tau, double z) const { 
     double num = (std::log(z) + (r - q) * tau - 0.5 * vol * vol * tau);
     double den = (vol * std::sqrt(tau));
     return (double)(num / den);

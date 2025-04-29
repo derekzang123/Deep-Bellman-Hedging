@@ -47,8 +47,8 @@ public:
         return vol;
     }
 
-    double getDminus(double tau, double z);
-    double getDplus(double tau, double z);
+    double getDminus(double tau, double z) const;
+    double getDplus(double tau, double z) const;
 
     OptionType getType() { return type; }
 
