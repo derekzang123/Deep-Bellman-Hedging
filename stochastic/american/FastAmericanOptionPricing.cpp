@@ -144,9 +144,9 @@ std::function<double(double)> K3I(
 }
 
 double K1(
-	double t, 
-	double q, 
-	double s,
+    double t, 
+    double q, 
+    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
@@ -158,9 +158,9 @@ double K1(
 }
 
 double K2(
-	double t, 
-	double q, 
-	double s,
+    double t, 
+    double q, 
+    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
@@ -172,9 +172,9 @@ double K2(
 }
 
 double K3(
-	double t, 
-	double r,
-	double s,
+    double t, 
+    double r,
+    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
@@ -186,13 +186,13 @@ double K3(
 }
 
 double N(
-	double t, 
-	double r, 
-	double s,
-	double K,
+    double t, 
+    double r, 
+    double s,
+    double K,
     std::vector<double>& n,
     std::vector<double>& w,
-	std::function<double(double)>& B,
+    std::function<double(double)>& B,
     const BlackScholes& bs
 )
 {
@@ -201,13 +201,13 @@ double N(
 }
 
 double D(
-	double t, 
-	double q, 
-	double s,
-	double K,
+    double t, 
+    double q, 
+    double s,
+    double K,
     std::vector<double>& n,
     std::vector<double>& w,
-	std::function<double(double)>& B,
+    std::function<double(double)>& B,
     const BlackScholes& bs
 )
 {
@@ -292,11 +292,11 @@ double f(
     double t, 
     double r, 
     double q,
-	double s,
-	double K,
+    double s,
+    double K,
     std::vector<double>& n,
     std::vector<double>& w,
-	std::function<double(double)>& B,
+    std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
