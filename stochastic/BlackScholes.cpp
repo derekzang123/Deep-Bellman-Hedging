@@ -1,6 +1,7 @@
 #include "BlackScholes.h"
 #include "american/FastAmericanOptionPricing.h"
 #include "american/QD_plus.h"
+#include "./Utils.h"
 
 
 BlackScholes::BlackScholes(double S_, double K_, double r_, double q_, double T_, double vol_, 
@@ -28,6 +29,31 @@ double BlackScholes::price() const {
     }
     return priceEuropean();
 }
+
+double BlackScholes::putPriceEuropean(double B, double t) const {
+    double t1 = std::exp(-r * t) * K *
+        Utils::NCDF(-getDminus(t, B / K));
+    double t2 = -B * std::exp(-q * t) *
+        Utils::NCDF(-getDplus(t, B / K));
+    return t1 - t2;
+}
+
+double BlackScholes::putThetaPrice(double t, double Bt) const {
+    if (t <= 0) return 0.0;
+
+    double t1 = r * K * std::exp(-r * t) * 
+        Utils::NCDF(-getDminus(t, Bt / K));
+    double t2 = -q * Bt * std::exp(-q * t) * 
+        Utils::NCDF(-getDplus(t, Bt / K));
+    double t3 = -vol * Bt / 2 * std::sqrt(t) *
+        std::exp(-q * t) * Utils::NPDF(getDplus(t, Bt / K));
+    
+    return t1 - t2 - t3;
+}
+
+
+
+
 
 double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
     auto [xVec, zVec] = computeNodes(n + 1, tauMax);

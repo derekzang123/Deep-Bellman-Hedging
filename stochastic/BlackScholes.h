@@ -52,6 +52,7 @@ public:
     }
 
     double getDminus(double tau, double z) const;
+
     double getDplus(double tau, double z) const;
 
     OptionType getType() { return type; }
@@ -59,7 +60,13 @@ public:
     ExerciseStyle getStyle() { return style; }
 
     double price() const;
-    double priceEuropean() const; 
+
+    double priceEuropean() const;
+    
+    double putPriceEuropean(double B, double t) const;
+
+    double putThetaPrice(double t, double Bt) const;
+
     double priceAmerican(int n, int m, int l, double tauMax) const;
 };
 

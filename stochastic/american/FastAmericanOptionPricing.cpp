@@ -5,6 +5,8 @@
 #include <vector> 
 #include <cmath> 
 #include <iterator>
+#include <stdexcept>
+
 
 /* STEP 1: Compute Chebyshev Nodes */
 std::vector<double> computeNodes(int N, int tM) { 
@@ -288,8 +290,13 @@ std::vector<double> operation(
     char op
 ) 
 {
-    if (a.size() != b.size()) return {};
+    if (a.size() != b.size()) {
+        throw std::invalid_argument("Vectors must be of equal size");
+    }
+
     std::vector<double> result;
+    result.reserve(a.size());
+
     if (op == '-') {
         std::transform(a.begin(), a.end(), b.begin(),
                        std::back_inserter(result),
@@ -361,7 +368,8 @@ std::vector<double> JN(
             Fvs_[i] = F_;
         } 
           
-        if (L2N(operation(Bvs_, Bvs, '-')) <= ts && L2N(operation(Bvs_, Fvs_, '-')) <= tr) {
+        if (L2N(operation(Bvs_, Bvs, '-')) <= ts && 
+            L2N(operation(Bvs_, Fvs_, '-')) <= tr) {
             return Bvs_;
         }
         Bvs = Bvs_;
