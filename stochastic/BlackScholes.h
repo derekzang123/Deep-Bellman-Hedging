@@ -27,24 +27,28 @@ public:
     BlackScholes(double S_, double K_, double r_, double q_, double T_, double vol_, 
         int N_, int steps_, OptionType type_, ExerciseStyle style_);
 
-    double getSpot() {
+    double getSpot() const {
         return S;
     }
 
-    double getStrike() {
+    double getStrike() const {
         return K;
     }
 
-    double getRate() {
+    double getRate() const {
         return r;
     }
 
-    double getDividend() {
+    double getDividend() const {
         return q;
     }
 
-    double getVolatility() {
+    double getVolatility() const {
         return vol;
+    }
+    
+    double getKStar(double t) const { 
+        return K * std::exp(-(r - q) * t);
     }
 
     double getDminus(double tau, double z) const;

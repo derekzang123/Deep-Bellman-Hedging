@@ -36,6 +36,7 @@
         "numeric": "cpp",
         "typeinfo": "cpp",
         "unordered_map": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "iterator": "cpp"
     }
 }

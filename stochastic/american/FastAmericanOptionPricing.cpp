@@ -1,48 +1,30 @@
 #include "FastAmericanOptionPricing.h"
+#include "./QD_plus.h"
 #include "../BlackScholes.h"
 #include "../Utils.h"
 #include <vector> 
 #include <cmath> 
+#include <iterator>
 
 /* STEP 1: Compute Chebyshev Nodes */
-std::pair<std::vector<double>, std::vector<double>> computeNodes(int n, int tMax) { 
-    std::vector<double> zVec, xVec;
-    for (int i = 0; i < n; i++) {
-        double z = -1 * std::cos((i*PI)/n);
-        double x = std::sqrt(tMax) / 2;
+std::vector<double> computeNodes(int N, int tM) { 
+    std::vector<double> xVec;
+    for (int i = 0; i < N; i++) {
+        double z = -1 * std::cos((i*PI) / N);
+        double x = std::sqrt(tM) / 2;
         x *= 1 + z;
         xVec.push_back(x);
-        zVec.push_back(z);
     }
-    return {xVec, zVec};
+    return xVec;
 }
 
-std::vector<double> computeCollocation(std::vector<double> xVec) {
-    std::vector<double> tau;
+std::vector<double> computeCollocation(std::vector<double>& xVec) {
+    std::vector<double> tVec;
     for (int i = 0; i <= xVec.size() - 1; i++) {
         double t = std::pow(xVec[i], 2);
-        tau.push_back(t);
+        tVec.push_back(t);
     }
-    return tau;
-}
-
-
-/* STEP 2: Tanh-Sinh Quadrature*/
-std::pair<std::vector<double>, std::vector<double>> quadrature(int l, double h) {
-    std::vector<double> nodes;
-    std::vector<double> weights;
-    int half_l = (l + 1) / 2;
-    for (int k = 0; k < half_l; k++) {
-        double n = std::tanh(0.5 * PI * std::sinh(k*h));
-        double w = (0.5 * h * std::cosh(k * h)) / std::pow(std::cosh(0.5 * PI * std::sinh(k * h)), 2);
-        nodes.push_back(n);
-        weights.push_back(w);
-        if (k > 0 || l % 2 == 0) {
-            nodes.push_back(-n);
-            weights.push_back(w);
-        }
-    }
-    return {nodes, weights};
+    return tVec;
 }
 
 std::vector<double> cWeights(std::vector<double> H) { 
@@ -55,18 +37,6 @@ std::vector<double> cWeights(std::vector<double> H) {
         }
     }
     return a;
-}
-
-std::vector<double> cBasis(double z, int N, bool F) {
-    std::vector<double> TVec (N + 1);
-    if (N >= 1) {
-        TVec[0] = 1.0;
-    }
-    TVec[1] = F && N >= 2 ? z : 2 * z;
-    for (size_t n = 2; n <= N; n ++) {
-        TVec[n] = 2.0 * TVec[1] * TVec[n-1] - TVec[n-2];
-    }
-    return TVec;
 }
 
 double qC(double z, const std::vector<double>& a) {
@@ -82,6 +52,23 @@ double qC(double z, const std::vector<double>& a) {
         b_k1 = b_k;
     }
     return a[0] + z * b_k1 - b_k2;
+}
+
+std::pair<std::vector<double>, std::vector<double>> quadNodes(int l, double h) {
+    std::vector<double> nodes;
+    std::vector<double> weights;
+    int half_l = (l + 1) / 2;
+    for (int k = 0; k < half_l; k++) {
+        double n = std::tanh(0.5 * PI * std::sinh(k*h));
+        double w = (0.5 * h * std::cosh(k * h)) / std::pow(std::cosh(0.5 * PI * std::sinh(k * h)), 2);
+        nodes.push_back(n);
+        weights.push_back(w);
+        if (k > 0 || l % 2 == 0) {
+            nodes.push_back(-n);
+            weights.push_back(w);
+        }
+    }
+    return {nodes, weights};
 }
 
 double quadSum (std::function<double(double)>& f, 
@@ -101,12 +88,12 @@ double quadSum (std::function<double(double)>& f,
 
 std::function<double(double)> K1I(
     double t, 
-    double q, 
-    double s,
     const std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
+    double q = bs.getDividend();
+    double s = bs.getVolatility();
     return [t, q, s, &B, &bs](double y) {
         double u = t * std::pow(y + 1.0, 2) / 4.0;
         return std::exp(q * u) * Utils::NCDF(bs.getDplus(t - u, B(t) / B(u)));
@@ -115,12 +102,12 @@ std::function<double(double)> K1I(
 
 std::function<double(double)> K2I(
     double t, 
-    double q, 
-    double s,
     const std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
+    double q = bs.getDividend();
+    double s = bs.getVolatility();
     return [t, q, s, &B, &bs](double y) {
         double u = t * std::pow(y + 1.0, 2) / 4.0;
         return (std::exp(q * u) / (s * std::sqrt(t - u))) * 
@@ -130,12 +117,12 @@ std::function<double(double)> K2I(
 
 std::function<double(double)> K3I(
     double t, 
-    double r, 
-    double s,
     const std::function<double(double)>& B,
     const BlackScholes& bs
 )
 {
+    double r = bs.getRate();
+    double s = bs.getVolatility();
     return [t, r, s, &B, &bs](double y) {
         double u = t * std::pow(y + 1.0, 2) / 4.0;
         return (std::exp(r * u) / (s * std::sqrt(t - u))) * 
@@ -145,90 +132,48 @@ std::function<double(double)> K3I(
 
 double K1(
     double t, 
-    double q, 
-    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
-	auto integrand = K1I(t, q, s, B, bs);
-	return std::exp(q * t) / 2.0 * t * quadSum(integrand, n, w);
+	auto integrand = K1I(t, B, bs);
+	return std::exp(bs.getDividend() * t) / 2.0 * t * quadSum(integrand, n, w);
 }
 
 double K2(
     double t, 
-    double q, 
-    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
-	auto integrand = K2I(t, q, s, B, bs);
-	return std::exp(q * t) * std::sqrt(t) * quadSum(integrand, n, w);
+	auto integrand = K2I(t, B, bs);
+	return std::exp(bs.getDividend() * t) * std::sqrt(t) * quadSum(integrand, n, w);
 }
 
 double K3(
     double t, 
-    double r,
-    double s,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
-	auto integrand = K3I(t, r, s, B, bs);
-	return std::exp(r * t) * std::sqrt(t) * quadSum(integrand, n, w);
-}
-
-double N(
-    double t, 
-    double r, 
-    double s,
-    double K,
-    std::vector<double>& n,
-    std::vector<double>& w,
-    std::function<double(double)>& B,
-    const BlackScholes& bs
-)
-{
-	return Utils::NCDF(bs.getDminus(t, B(t) / K)) / (s * std::sqrt(t)) + r * 
-    K3(t, r, s, n, w, B, bs);
-}
-
-double D(
-    double t, 
-    double q, 
-    double s,
-    double K,
-    std::vector<double>& n,
-    std::vector<double>& w,
-    std::function<double(double)>& B,
-    const BlackScholes& bs
-)
-{
-	return Utils::NCDF(bs.getDplus(t, B(t) / K)) / (s * std::sqrt(t)) + 
-    Utils::NCDF(bs.getDplus(t, B(t) / K)) + q * (K1(t, q, s, n, w, B, bs) + 
-    K2(t, q, s, n, w, B, bs));
-}
-
-double K_(double t, double r, double q, double K) 
-{
-    return K * std::exp(-(r - q) * t);
+	auto integrand = K3I(t, B, bs);
+	return std::exp(bs.getRate() * t) * std::sqrt(t) * quadSum(integrand, n, w);
 }
 
 std::function<double(double)> N_I (
     double t, 
-    double r, 
-    double s,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
+    double r = bs.getRate();
+    double s = bs.getVolatility();
     return [t, r, s, &B, &bs](double y) {
         double u = t * std::pow(y + 1.0, 2) / 4.0;
         return (std::exp(r * u) * bs.getDminus(t, B(t) / B(u))) / (B(t) * 
@@ -236,32 +181,26 @@ std::function<double(double)> N_I (
     };
 }
 
-double N_ (
+double N(
     double t, 
-    double r, 
-    double s, 
-    double K, 
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
-) 
+)
 {
-    auto integrand = N_I(t, r, s, B, bs);
-    return -bs.getDminus(t, B(t) / K) * Utils::NCDF(bs.getDminus(t, B(t))) / 
-    (B(t) * std::pow(s, 2) * t) - r * quadSum(integrand, n, w); 
-
+	return Utils::NCDF(bs.getDminus(t, B(t) / bs.getStrike())) / (bs.getVolatility() * std::sqrt(t)) + bs.getRate() * K3(t, n, w, B, bs);
 }
 
 std::function<double(double)> D_I(
     double t,
-    double r,
-    double s,
-    double K,  
     std::function<double(double)>& B,
     const BlackScholes& bs
 )
 {
+    double r = bs.getRate();
+    double s = bs.getVolatility();
+    double K = bs.getStrike();
     return [t, r, s, K, &B, &bs](double y) {
         double u = t * std::pow(y + 1.0, 2) / 4.0;
         return (B(u) / K) * (std::exp(r * u) * bs.getDminus(t - u, B(t) / B(u))) / 
@@ -269,54 +208,164 @@ std::function<double(double)> D_I(
     };
 }
 
+double D(
+    double t, 
+    std::vector<double>& n,
+    std::vector<double>& w,
+    std::function<double(double)>& B,
+    const BlackScholes& bs
+)
+{
+	return Utils::NCDF(bs.getDplus(t, B(t) / bs.getStrike())) / (bs.getVolatility() * std::sqrt(t)) + 
+    Utils::NCDF(bs.getDplus(t, B(t) / bs.getStrike())) + bs.getDividend() * (K1(t, n, w, B, bs) + 
+    K2(t, n, w, B, bs));
+}
+
+double N_ (
+    double t, 
+    std::vector<double>& n,
+    std::vector<double>& w,
+    std::function<double(double)>& B,
+    const BlackScholes& bs
+) 
+{
+    auto integrand = N_I(t, B, bs);
+    return -bs.getDminus(t, B(t) / bs.getStrike()) * Utils::NCDF(bs.getDminus(t, B(t))) / 
+    (B(t) * std::pow(bs.getVolatility(), 2) * t) - bs.getRate() * quadSum(integrand, n, w); 
+
+}
+
+
 double D_ (
     double t, 
-    double r, 
-    double q,
-    double s, 
-    double K,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 { 
-    auto integrand = D_I(t, r, s, K, B, bs);
+    auto integrand = D_I(t, B, bs);
 
-    return - K_(t, r, q, K) / B(t) * bs.getDminus(t, B(t) / K) * 
-    Utils::NPDF(bs.getDminus(t, B(t) / K)) / (B(t) * std::pow(s, 2) * t) - 
-    q * K_(t, r, q, K) / B(t) * quadSum(integrand, n , w);
+    return - bs.getKStar(t) / B(t) * bs.getDminus(t, B(t) / bs.getStrike()) * 
+    Utils::NPDF(bs.getDminus(t, B(t) / bs.getStrike())) / (B(t) * std::pow(bs.getVolatility(), 2) * t) - 
+    bs.getDividend() * bs.getKStar(t) / B(t) * quadSum(integrand, n , w);
 }
 
 double f(
     double t, 
-    double r, 
-    double q,
-    double s,
-    double K,
     std::vector<double>& n,
     std::vector<double>& w,
     std::function<double(double)>& B,
     const BlackScholes& bs
 ) 
 {
-    return K_(t, r, q, K) * N(t, r, s, K, n, w, B, bs) / D(t, q, s, K, n, w, B, bs);
+    return bs.getKStar(t) * N(t, n, w, B, bs) / D(t, n, w, B, bs);
 }
 
 double f_ (
     double t, 
-    double r, 
-    double q, 
-    double s,
-    double K,
-    std::function<double(double)>& B,
-    std::vector<double> w, 
     std::vector<double> n,
+    std::vector<double> w, 
+    std::function<double(double)>& B,
     const BlackScholes& bs
-    ) 
+) 
 {
-    return K_(t, r, q, K) * N_(t, r, s, K, n, w, B, bs) / D(t, q, s, K, n, w, B, bs) - 
-    D_(t, r, q, s, K, n, w, B, bs) * N(t, r, s, K, n, w, B, bs) / 
-    std::pow(D(t, q, s, K, n, w, B, bs), 2);
+    return bs.getKStar(t) * N_(t, n, w, B, bs) / D(t, n, w, B, bs) - 
+    D_(t, n, w, B, bs) * N(t, n, w, B, bs) / std::pow(D(t, n, w, B, bs), 2);
 }
 
+double L2N (const std::vector<double>& vec) {
+    double sum = 0.0;
+    for(double v : vec) { 
+        sum += v*v;
+    }
+    return std::sqrt(sum);
+}
+
+std::vector<double> operation(
+    std::vector<double> a, 
+    std::vector<double> b, 
+    char op
+) 
+{
+    if (a.size() != b.size()) return {};
+    std::vector<double> result;
+    if (op == '-') {
+        std::transform(a.begin(), a.end(), b.begin(),
+                       std::back_inserter(result),
+                       [](double x, double y) { return x - y; });
+    }
+    else if (op == '+') {
+        std::transform(a.begin(), a.end(), b.begin(),
+                       std::back_inserter(result),
+                       [](double x, double y) { return x + y; });
+    }
+    return result;
+}
+
+std::vector<double> JN(
+    int N, 
+    int l, 
+    double h,
+    double tM, 
+    double tr, 
+    double ts, 
+    double nu,
+    bool LS,
+    int maxIter,
+    const BlackScholes& bs
+) 
+{
+    std::vector<double> xVec = computeNodes(N, tM);
+    std::vector<double> tVec = computeCollocation(xVec);
+
+    std::vector<double> Bvs(N) = QD(tVec, 
+                                  bs.getRate(), 
+                                  bs.getDividend(),
+                                  bs.getVolatility(), 
+                                  bs.getStrike()
+                                  );
+    std::vector<double> coeffs(N + 1), H(N), Bvs_(N), Fvs_(N);
+    
+    auto [n, w] = quadNodes(l, h);
+    const double X = bs.getStrike() * std::min(1.0, bs.getRate() / bs.getDividend();
+
+    int iter = 0;
+    do {
+        for (size_t i = 0; i < N; ++i) {
+            H[i] = std::pow(std::log(Bvs[i] / X), 2);
+        }
+        coeffs = cWeights(H); 
+        std::function<double(double)> B = [&](double t) {
+            double z = (2 * std::sqrt(t) / std::sqrt(tM)) - 1.0;
+            return X * std::exp(std::sqrt(qC(z, coeffs)));
+        };
+        
+        for(int i = 0; i < N; i++){
+            double F = f(tVec[i], n, w, B, bs);
+            double F_ = f_(tVec[i], n, w, B, bs);
+            Bvs_[i] = Bvs[i] + nu * (Bvs[i] - F) / (F_ - 1);
+        }
+          
+        H.clear(); coeffs.clear();
+        for (size_t i = 0; i < N; ++i) {
+            H[i] = std::pow(std::log(Bvs_[i] / X), 2);
+        }
+        coeffs = cWeights(H); 
+        std::function<double(double)> B_ = [&](double t) {
+            double z = (2 * std::sqrt(t) / std::sqrt(tM)) - 1.0;
+            return X * std::exp(std::sqrt(qC(z, coeffs)));
+        };
+        for(int i = 0; i < N; i++){
+            double F_ = f(tVec[i], n, w, B_, bs);
+            Fvs_[i] = F_;
+        } 
+          
+        if (L2N(operation(Bvs_, Bvs, '-')) <= ts && L2N(operation(Bvs_, Fvs_, '-')) <= tr) {
+            return Bvs_;
+        }
+        Bvs = Bvs_;
+        Bvs_.clear();
+    } while (++iter < maxIter);
+    return Bvs;
+}
