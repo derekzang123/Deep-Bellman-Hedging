@@ -21,60 +21,70 @@ QDPlus::QDParams QDPlus::getQDParams(const BlackScholes& bs, double t) {
     
     return QDParams(lambda, dlambda, omega, h);
 } 
+
 std::vector<double> QDPlus::exerciseBoundary(
     const BlackScholes& bs, 
     std::vector<double>& tVec,
     int maxIter,
     double ts, 
     double tf
-)
+) 
 {
     std::vector<double> BvsI(tVec.size());
-    const double K = bs.getStrike();
-    const double r = bs.getRate();
-    const double q = bs.getDividend();
-    const double s = bs.getVolatility();
+
+    const double K = bs.getStrike();      
+    const double r = bs.getRate();        
+    const double q = bs.getDividend();    
+    const double s = bs.getVolatility();  
 
     for (size_t i = 0; i < tVec.size(); ++i) {
         const double t = tVec[i];
+
         if (t <= 0) {
-            BvsI[i] = std::min(0,1);
-            continue;
+            BvsI[i] = std::min(1,0);  // Placeholder for exact values
         }
         const QDParams qd = getQDParams(bs, t);
+        
         double B = K * std::min(1.0, r / q);
 
         int iter = 0;
         do {
             const double dP = bs.getDplus(t, B / K);
             const double dM = bs.getDminus(t, B / K);
+
             const double ncdfNegDp = Utils::NCDF(-dP);
             const double ncdfNegDm = Utils::NCDF(-dM);
             const double ncdfDp = Utils::NCDF(dP);
 
-
-            const double v = bs.putPriceEuropean(B, t);
-            const double theta = bs.putThetaPrice(t, B);
-
+            const dual l = qd.lambda;
+            const dual v = bs.putPriceEuropean(B, t);
+            const dual th = bs.putThetaPrice(t, B);
             const double D = 2.0 * qd.lambda + qd.omega - 1.0;
-            const double c0 = -((1.0 - qd.h) * s * s) / (r * D)
-                * (1.0 / qd.h - std::exp(r * t) * theta / (r * (K - B - v))
-                - qd.dlambda / D);
+            const dual c0 = -((1.0 - qd.h) * s * s) / (r * D)
+                            * (1.0 / qd.h - std::exp(r * t) * th / (r * (K - B - v))
+                            - qd.dlambda / D);
 
-            const double f = -std::exp(-q * t) * Utils::NCDF(-bs.getDplus(t, B / K)) 
-                + (qd.lambda + c0) * (K - B - v) / B + 1.0;
+            auto f = [&](dual q, dual t, dual B, dual K, dual l, dual c0, dual v) -> dual 
+            {
+                return (-std::exp(-q * t) * Utils::NCDF(-bs.getDplus(t, B / K)) 
+                        + (l + c0) * (K - B - v) / B + 1.0);
+            };
 
-            if (std::abs(f) < tf) {
+            dual dfdb = derivative(f, q, t, B, K, qd.lambda, c0, v);
+            double dfdB = derivative(f, q, t, B, K, qd.lambda, c0, v);
+            double dfdB2 = derivative(dfdb, wrt(B), at(q, t, B, K, qd.lambda, c0, v));
+
+            double sH = (2.0 * f * dfdB) / (2.0 * std::pow(dfdB, 2) - dfdB2 * f);
+            B -= sH;
+
+            double f_ = (-std::exp(-q * t) * Utils::NCDF(-bs.getDplus(t, B / K)) 
+                        + (qd.lambda + c0) * (K - B - v) / B + 1.0);
+
+            if (std::abs(f_) < tf && std::abs(sH) < ts) {
                 break;
             }
-
-           
-            if (dB < ts) {
-                break;
-            }
-            double B_ = B - dB;
-            if (iter == maxIter) { 
-                throw std::runtime_error("QD+ failed to converge");
+            if (iter == maxIter) {
+                throw std::runtime_error("QD+ failed to converge within maxIter iterations");
             }
         } while (++iter < maxIter);
         BvsI[i] = B;
