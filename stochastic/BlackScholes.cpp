@@ -30,6 +30,14 @@ double BlackScholes::price() const {
     return priceEuropean();
 }
 
+double BlackScholes::priceEuropean() const { 
+    if(type == OptionType::Call) {
+        return putPriceEuropean(1,1); // TODO: Create pricing for Euro/Call
+    } else { 
+        return putPriceEuropean(1,1);
+    }
+}
+
 double BlackScholes::putPriceEuropean(double B, double t) const {
     double t1 = std::exp(-r * t) * K *
         Utils::NCDF(-getDminus(t, B / K));
@@ -50,10 +58,6 @@ double BlackScholes::putThetaPrice(double t, double Bt) const {
     
     return t1 - t2 - t3;
 }
-
-
-
-
 
 double BlackScholes::priceAmerican(int n, int m, int l, double tauMax) const {
     auto [xVec, zVec] = computeNodes(n + 1, tauMax);
