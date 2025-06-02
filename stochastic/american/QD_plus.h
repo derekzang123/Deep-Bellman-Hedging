@@ -1,31 +1,17 @@
-#ifndef QDPLUS_H
-#define QDPLUS_H
+#ifndef QD_PLUS_H
+#define QD_PLUS_H
 
-#include <vector> 
+#include "../Utils.h"
 #include "../BlackScholes.h"
-#include "FastAmericanOptionPricing.h"
+#include <vector>
 
-class QDPlus {
-public:
-    std::vector<double> QDPlus::exerciseBoundary(
-        const BlackScholes& bs, 
-        std::vector<double>& tVec,
-        int maxIter,
-        double ts, 
-        double tf
-    );
+double p(double S, double t, double K, const BlackScholes &bs);
 
-private:    
-    struct QDParams {
-        double lambda;
-        double dlambda;
-        double omega;
-        double h; 
+double d1(double S, double t, double K, const BlackScholes &bs);
 
-        QDParams(double lambda_, double dlambda_, double omega_, double h_)
-            : lambda(lambda_), dlambda(dlambda_), omega(omega_), h(h_) {}
-    };
-    static QDParams getQDParams(const BlackScholes& bs, double T);
-};
+double d2(double S, double t, double K, const BlackScholes &bs);
 
-#endif
+std::vector<double> QD_(const BlackScholes &bs, std::vector<double> &tVec,
+    int maxIter, double ts, double tf);
+
+#endif 
