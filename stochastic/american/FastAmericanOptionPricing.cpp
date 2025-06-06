@@ -324,12 +324,9 @@ std::vector<double> JN(
     std::vector<double> xVec = computeNodes(N, tM);
     std::vector<double> tVec = computeCollocation(xVec);
 
-    std::vector<double> Bvs(N) = QD(tVec, 
-                                  bs.getRate(), 
-                                  bs.getDividend(),
-                                  bs.getVolatility(), 
-                                  bs.getStrike()
-                                  );
+    int qd_maxIter, qd_ts, qd_tf;
+
+    std::vector<double> Bvs = QD_(bs, tVec, qd_maxIter, qd_ts, qd_tf);
     std::vector<double> coeffs(N + 1), H(N), Bvs_(N), Fvs_(N);
     
     auto [n, w] = quadNodes(l, h);
@@ -399,9 +396,8 @@ std::function<double(double)> V0_I(
     return [S, r, t, &B, &bs](double y) {
         double z = std::sqrt(t) / 2.0 * (y + 1.0);
         double u = t - std::pow(z, 2);
-        return  z * std::exp(-r * std::pow(z, 2))
-            * Utils::NCDF(-bs.getDminus(std::pow(z, 2), S / B(u)));
-    }
+        return  z * std::exp(-r * std::pow(z, 2)) * Utils::NCDF(-bs.getDminus(std::pow(z, 2), S / B(u)));
+    };
 }
 
 std::function<double(double)> V1_I(
@@ -416,5 +412,5 @@ std::function<double(double)> V1_I(
         double z = std::sqrt(t) / 2.0 * (y + 1.0);
         double u = t - std::pow(z, 2);
         return  z * std::exp(-q * std::pow(z, 2)) * Utils::NCDF(-bs.getDplus(std::pow(z, 2), S / B(u)));
-    }
+    };
 }
