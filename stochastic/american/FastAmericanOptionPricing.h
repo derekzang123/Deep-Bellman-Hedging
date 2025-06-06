@@ -139,6 +139,24 @@ std::vector<double> JN(
     const BlackScholes& bs
 ); 
 
+double V(const BlackScholes &bs, 
+         double t, 
+         std::function<double(double)> &B, 
+         int l, 
+         double h);
+
+std::function<double(double)> V0_I(
+    double t,
+    const BlackScholes &bs, 
+    std::function<double(double)> &B
+);
+
+std::function<double(double)> V1_I(
+    double t,
+    const BlackScholes &bs, 
+    std::function<double(double)> &B
+); 
+    
 
 // Utils
 double L2N (const std::vector<double>& vec);

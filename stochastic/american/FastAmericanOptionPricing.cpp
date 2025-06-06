@@ -7,8 +7,6 @@
 #include <iterator>
 #include <stdexcept>
 
-
-/* STEP 1: Compute Chebyshev Nodes */
 std::vector<double> computeNodes(int N, int tM) { 
     std::vector<double> xVec;
     for (int i = 0; i < N; i++) {
@@ -335,7 +333,7 @@ std::vector<double> JN(
     std::vector<double> coeffs(N + 1), H(N), Bvs_(N), Fvs_(N);
     
     auto [n, w] = quadNodes(l, h);
-    const double X = bs.getStrike() * std::min(1.0, bs.getRate() / bs.getDividend();
+    const double X = bs.getStrike() * std::min(1.0, bs.getRate() / bs.getDividend());
 
     int iter = 0;
     do {
@@ -376,4 +374,47 @@ std::vector<double> JN(
         Bvs_.clear();
     } while (++iter < maxIter);
     return Bvs;
+}
+double V(const BlackScholes &bs, double t, std::function<double(double)>& B, int l, int h) 
+{
+    const double v = std::exp(-bs.getRate() * t) * bs.getStrike() * 
+                     Utils::NCDF(-bs.getDminus(t, bs.getSpot() / bs.getStrike())) 
+                     - bs.getSpot() * std::exp(-bs.getDividend() * t) *
+                     Utils::NCDF(-bs.getDplus(t, bs.getSpot() / bs.getStrike()));
+    auto int0 = V0_I(t, bs, B);
+    auto int1 = V1_I(t, bs, B);
+
+    auto [n, w] = quadNodes(l, h);
+    return v + std::sqrt(t) * (bs.getRate() * bs.getStrike() * quadSum(int0, n, w) + bs.getDividend() * bs.getStrike() * quadSum(int1, n, w));
+}
+
+std::function<double(double)> V0_I(
+    double t,
+    const BlackScholes &bs, 
+    std::function<double(double)>& B
+) 
+{
+    double r = bs.getRate();
+    double S = bs.getSpot();
+    return [S, r, t, &B, &bs](double y) {
+        double z = std::sqrt(t) / 2.0 * (y + 1.0);
+        double u = t - std::pow(z, 2);
+        return  z * std::exp(-r * std::pow(z, 2))
+            * Utils::NCDF(-bs.getDminus(std::pow(z, 2), S / B(u)));
+    }
+}
+
+std::function<double(double)> V1_I(
+    double t,
+    const BlackScholes &bs, 
+    std::function<double(double)>& B
+) 
+{
+    double q = bs.getDividend(); 
+    double S = bs.getSpot(); 
+    return [S, q, t, &B, &bs](double y) {
+        double z = std::sqrt(t) / 2.0 * (y + 1.0);
+        double u = t - std::pow(z, 2);
+        return  z * std::exp(-q * std::pow(z, 2)) * Utils::NCDF(-bs.getDplus(std::pow(z, 2), S / B(u)));
+    }
 }
